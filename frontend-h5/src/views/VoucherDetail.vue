@@ -1,0 +1,397 @@
+<template>
+  <div class="voucher-detail-page">
+    <!-- Navigation bar -->
+    <van-nav-bar
+      title="卡券详情"
+      left-arrow
+      @click-left="goBack"
+      fixed
+      placeholder
+    />
+
+    <!-- Loading skeleton -->
+    <template v-if="loading">
+      <div class="skeleton-content">
+        <div class="skeleton-section card">
+          <van-skeleton title round row="3" />
+        </div>
+        <div class="skeleton-section card">
+          <van-skeleton title round row="4" />
+        </div>
+      </div>
+    </template>
+
+    <!-- Error state -->
+    <template v-else-if="error">
+      <div class="error-state">
+        <van-icon name="warn-o" size="48" color="#c8c9cc" />
+        <p class="error-text">{{ notFound ? '券不存在' : '加载失败' }}</p>
+        <van-button
+          v-if="!notFound"
+          type="primary"
+          size="small"
+          @click="fetchDetail"
+          class="retry-btn"
+        >
+          重新加载
+        </van-button>
+      </div>
+    </template>
+
+    <!-- Voucher detail -->
+    <template v-else-if="voucher">
+      <div class="detail-content">
+        <!-- Status + resource name -->
+        <div class="voucher-header card">
+          <van-tag
+            :class="statusTagClass(voucher.status)"
+            size="small"
+            class="status-badge"
+          >
+            {{ statusLabel(voucher.status) }}
+          </van-tag>
+          <h2 class="resource-name">{{ voucher.remark || '卡券' }}</h2>
+        </div>
+
+        <!-- QR code section -->
+        <div class="qr-section card">
+          <div class="qr-wrapper" ref="qrRef">
+            <div id="qrCodeContainer"></div>
+          </div>
+          <p class="qr-hint">出示二维码给管理员核销</p>
+          <p
+            class="voucher-code-text"
+            @click="copyVoucherCode"
+          >
+            {{ voucher.voucherCode }}
+            <van-icon name="copy-o" size="14" class="copy-icon" />
+          </p>
+        </div>
+
+        <!-- Detail info card -->
+        <div class="info-card card">
+          <div class="info-row">
+            <span class="info-label">有效期</span>
+            <span class="info-value">{{ formatDateTime(voucher.expireAt) }}</span>
+          </div>
+          <div class="info-divider" />
+          <div class="info-row">
+            <span class="info-label">资源描述</span>
+            <span class="info-value info-desc">{{ voucher.remark || '--' }}</span>
+          </div>
+          <div class="info-divider" />
+          <div class="info-row">
+            <span class="info-label">发放时间</span>
+            <span class="info-value">{{ formatDateTime(voucher.issuedAt) }}</span>
+          </div>
+          <div v-if="voucher.approveRef" class="info-divider" />
+          <div v-if="voucher.approveRef" class="info-row">
+            <span class="info-label">审批单号</span>
+            <span class="info-value mono">{{ voucher.approveRef }}</span>
+          </div>
+          <div v-if="voucher.status === 'USED' && voucher.usedAt" class="info-divider" />
+          <div v-if="voucher.status === 'USED' && voucher.usedAt" class="info-row">
+            <span class="info-label">核销时间</span>
+            <span class="info-value">{{ formatDateTime(voucher.usedAt) }}</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- Bottom tab bar -->
+    <van-tabbar fixed route>
+      <van-tabbar-item
+        icon="coupon-o"
+        :to="{ name: 'VoucherList' }"
+      >
+        我的卡券
+      </van-tabbar-item>
+      <van-tabbar-item
+        icon="records"
+        @click="onUsageRecords"
+      >
+        使用记录
+      </van-tabbar-item>
+    </van-tabbar>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, nextTick, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Toast, showToast } from 'vant';
+import QRCode from 'qrcodejs2';
+import { getVoucherDetail } from '../api/voucher';
+
+const route = useRoute();
+const router = useRouter();
+
+const voucher = ref(null);
+const loading = ref(false);
+const error = ref(false);
+const notFound = ref(false);
+const qrRef = ref(null);
+
+const STATUS_MAP = {
+  ISSUED: { label: '有效', class: 'tag-valid' },
+  USED: { label: '已使用', class: 'tag-used' },
+  EXPIRED: { label: '已过期', class: 'tag-expired' },
+  CANCELLED: { label: '已作废', class: 'tag-revoked' },
+};
+
+let qrCodeInstance = null;
+
+function statusLabel(status) {
+  return STATUS_MAP[status]?.label || status;
+}
+
+function statusTagClass(status) {
+  return STATUS_MAP[status]?.class || '';
+}
+
+function formatDateTime(dateStr) {
+  if (!dateStr) return '--';
+  const date = new Date(dateStr);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const h = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${y}-${m}-${d} ${h}:${min}`;
+}
+
+function generateQRCode(voucherCode) {
+  const container = document.getElementById('qrCodeContainer');
+  if (!container) return;
+
+  // Destroy previous instance
+  if (qrCodeInstance) {
+    qrCodeInstance.clear();
+    container.innerHTML = '';
+  }
+
+  // QR content: static voucher_code (server handles dedup via optimistic locking)
+  const qrText = voucherCode;
+
+  qrCodeInstance = new QRCode(container, {
+    text: qrText,
+    width: 200,
+    height: 200,
+    colorDark: '#323233',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M,
+  });
+}
+
+async function copyVoucherCode() {
+  if (!voucher.value?.voucherCode) return;
+  try {
+    await navigator.clipboard.writeText(voucher.value.voucherCode);
+    Toast.success('已复制券码');
+  } catch {
+    Toast.fail('复制失败');
+  }
+}
+
+async function fetchDetail() {
+  const id = route.params.id;
+  if (!id) {
+    error.value = true;
+    notFound.value = true;
+    return;
+  }
+
+  loading.value = true;
+  error.value = false;
+  notFound.value = false;
+
+  try {
+    const res = await getVoucherDetail(id);
+    const data = res?.data || res;
+    if (!data) {
+      error.value = true;
+      notFound.value = true;
+      return;
+    }
+    voucher.value = data;
+
+    // Generate QR code after DOM update
+    await nextTick();
+    generateQRCode(data.voucherCode);
+  } catch (err) {
+    error.value = true;
+    if (err?.response?.status === 404) {
+      notFound.value = true;
+    }
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goBack() {
+  router.back();
+}
+
+function onUsageRecords() {
+  Toast('功能开发中');
+}
+
+// Regenerate QR when route param changes (same component, different voucher)
+watch(
+  () => route.params.id,
+  () => {
+    fetchDetail();
+  },
+);
+
+onMounted(() => {
+  fetchDetail();
+});
+</script>
+
+<style scoped>
+.voucher-detail-page {
+  min-height: 100vh;
+  padding-bottom: 60px; /* space for tabbar */
+  background: var(--color-bg);
+}
+
+.skeleton-content {
+  padding: var(--spacing-md);
+}
+
+.skeleton-section {
+  margin-bottom: var(--spacing-sm);
+}
+
+.error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 80px var(--spacing-md);
+}
+
+.error-text {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+}
+
+.retry-btn {
+  margin-top: var(--spacing-md);
+  min-width: 120px;
+}
+
+.detail-content {
+  padding: var(--spacing-sm) var(--spacing-md);
+}
+
+/* Voucher header */
+.voucher-header {
+  margin-bottom: var(--spacing-sm);
+  text-align: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+}
+
+.status-badge {
+  display: inline-block;
+  margin-bottom: var(--spacing-sm);
+  font-size: var(--font-size-small);
+  padding: 2px 8px;
+  line-height: 20px;
+  border-radius: var(--radius-sm);
+}
+
+.resource-name {
+  font-size: var(--font-size-heading);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+/* QR section */
+.qr-section {
+  margin-bottom: var(--spacing-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: var(--spacing-lg) var(--spacing-md);
+}
+
+.qr-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-width: 200px;
+  min-height: 200px;
+}
+
+.qr-hint {
+  margin-top: var(--spacing-md);
+  font-size: var(--font-size-body);
+  color: var(--color-text-secondary);
+}
+
+.voucher-code-text {
+  margin-top: var(--spacing-sm);
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  letter-spacing: 2px;
+  cursor: pointer;
+  user-select: all;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--spacing-2xs);
+  padding: var(--spacing-2xs) var(--spacing-xs);
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+
+.voucher-code-text:active {
+  background: var(--color-border-light);
+}
+
+.copy-icon {
+  vertical-align: middle;
+}
+
+/* Info card */
+.info-card {
+  margin-bottom: var(--spacing-sm);
+}
+
+.info-row {
+  display: flex;
+  flex-direction: column;
+  padding: var(--spacing-sm) 0;
+}
+
+.info-label {
+  font-size: var(--font-size-small);
+  color: var(--color-text-secondary);
+  margin-bottom: var(--spacing-2xs);
+}
+
+.info-value {
+  font-size: var(--font-size-body);
+  color: var(--color-text-primary);
+  word-break: break-word;
+}
+
+.info-value.mono {
+  font-family: var(--font-family-mono);
+  letter-spacing: 1px;
+  font-size: var(--font-size-small);
+}
+
+.info-desc {
+  line-height: 1.6;
+}
+
+.info-divider {
+  height: 1px;
+  background: var(--color-border-light);
+}
+</style>
