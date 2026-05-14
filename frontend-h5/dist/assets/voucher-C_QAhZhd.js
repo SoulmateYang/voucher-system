@@ -1,0 +1,1 @@
+import{p as e}from"./index-BTaYULQN.js";function u(t,r){return e.post("/auth/login",{employeeId:t,password:r})}function n(t={}){return e.get("/vouchers/my",{params:t})}function s(t){return e.get(`/vouchers/my/${t}`)}export{s as a,n as g,u as l};

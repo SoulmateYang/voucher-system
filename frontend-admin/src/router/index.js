@@ -35,6 +35,12 @@ const routes = [
         component: () => import('../views/Reports.vue'),
         meta: { title: '统计报表' },
       },
+      {
+        path: 'employees',
+        name: 'EmployeeManage',
+        component: () => import('../views/EmployeeManage.vue'),
+        meta: { title: '员工管理' },
+      },
     ],
   },
 ]

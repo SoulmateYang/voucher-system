@@ -5,7 +5,7 @@
       <p class="login-subtitle">员工登录</p>
     </div>
 
-    <van-form @submit="handleLogin" class="login-form">
+    <van-form ref="formRef" class="login-form" @submit="preventDefault">
       <van-field
         v-model="form.employeeId"
         name="employeeId"
@@ -26,21 +26,15 @@
         maxlength="64"
       />
 
-      <div class="login-options">
-        <van-checkbox v-model="rememberLogin" shape="square" icon-size="16px">
-          <span class="remember-text">记住登录</span>
-        </van-checkbox>
-      </div>
-
       <div class="login-submit">
         <van-button
           round
           block
           type="primary"
-          native-type="submit"
           :loading="submitting"
           loading-text="登录中..."
           class="login-button"
+          @click="handleLogin"
         >
           登 录
         </van-button>
@@ -57,15 +51,27 @@ import { login } from '../api/voucher';
 import { setToken } from '../api/request';
 
 const router = useRouter();
+const formRef = ref(null);
 
 const form = reactive({
   employeeId: '',
   password: '',
 });
-const rememberLogin = ref(false);
 const submitting = ref(false);
 
+function preventDefault(e) {
+  e.preventDefault();
+}
+
 async function handleLogin() {
+  if (!formRef.value) return;
+
+  try {
+    await formRef.value.validate();
+  } catch {
+    return;
+  }
+
   submitting.value = true;
   try {
     const res = await login(form.employeeId, form.password);
@@ -73,13 +79,11 @@ async function handleLogin() {
     if (token) {
       setToken(token);
       Toast.success('登录成功');
-      router.replace({ name: 'VoucherList' });
+      await router.replace({ name: 'VoucherList' });
     } else {
       Toast.fail('登录失败，未获取到凭证');
     }
   } catch (err) {
-    // Toast is already shown by the response interceptor in request.js.
-    // Only show a fallback if no response was received.
     if (!err.response) {
       Toast.fail('网络异常，请稍后重试');
     }
@@ -118,17 +122,6 @@ async function handleLogin() {
 
 .login-form {
   width: 100%;
-}
-
-.login-options {
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-sm) var(--spacing-md);
-}
-
-.remember-text {
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
 }
 
 .login-submit {

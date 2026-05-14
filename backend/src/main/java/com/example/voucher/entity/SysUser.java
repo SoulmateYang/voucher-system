@@ -24,6 +24,12 @@ public class SysUser {
 
     private Integer enabled;
 
+    private String employeeNo;
+
+    private String mobile;
+
+    private String department;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

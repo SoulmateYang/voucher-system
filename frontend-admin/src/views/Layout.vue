@@ -29,6 +29,10 @@
           <el-icon><DataAnalysis /></el-icon>
           <template #title>统计报表</template>
         </el-menu-item>
+        <el-menu-item index="/employees">
+          <el-icon><User /></el-icon>
+          <template #title>员工管理</template>
+        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer">
@@ -91,6 +95,7 @@ import {
   DataAnalysis,
   Setting,
   UserFilled,
+  User,
   ArrowDown,
   SwitchButton,
 } from '@element-plus/icons-vue'
@@ -107,6 +112,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/batch')) return '/batch'
   if (path.startsWith('/verify')) return '/verify'
   if (path.startsWith('/reports')) return '/reports'
+  if (path.startsWith('/employees')) return '/employees'
   return '/batch'
 })
 
