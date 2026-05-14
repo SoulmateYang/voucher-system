@@ -42,7 +42,12 @@
     <template v-else-if="voucher">
       <div class="detail-content">
         <!-- Status + resource name -->
-        <div class="voucher-header card">
+        <div class="voucher-header card" :class="{ 'is-coupon': voucher.voucherType === 'COUPON' }">
+          <!-- Coupon face value display -->
+          <div v-if="voucher.voucherType === 'COUPON'" class="coupon-value-block">
+            <span class="coupon-symbol">¥</span>
+            <span class="coupon-amount">{{ voucher.faceValue || 0 }}</span>
+          </div>
           <van-tag
             :class="statusTagClass(voucher.status)"
             size="small"
@@ -50,7 +55,7 @@
           >
             {{ statusLabel(voucher.status) }}
           </van-tag>
-          <h2 class="resource-name">{{ voucher.remark || '卡券' }}</h2>
+          <h2 class="resource-name">{{ voucher.remark || (voucher.voucherType === 'COUPON' ? '优惠券' : '卡券') }}</h2>
         </div>
 
         <!-- QR code section -->
@@ -68,6 +73,32 @@
           </p>
         </div>
 
+        <!-- Coupon detail card -->
+        <div v-if="voucher.voucherType === 'COUPON'" class="info-card card coupon-info-card">
+          <div class="info-row">
+            <span class="info-label">券类型</span>
+            <span class="info-value">{{ voucher.discountType === 'FIXED_AMOUNT' ? '满减券' : '折扣券' }}</span>
+          </div>
+          <div class="info-divider" />
+          <div v-if="voucher.discountType === 'PERCENTAGE'" class="info-row">
+            <span class="info-label">折扣率</span>
+            <span class="info-value coupon-discount">{{ 100 - (voucher.discountValue || 0) }}折</span>
+          </div>
+          <div v-else class="info-row">
+            <span class="info-label">优惠金额</span>
+            <span class="info-value">直减 ¥{{ voucher.faceValue || voucher.discountValue || 0 }}</span>
+          </div>
+          <div class="info-divider" />
+          <div v-if="voucher.minOrderAmount > 0" class="info-row">
+            <span class="info-label">使用条件</span>
+            <span class="info-value">满 ¥{{ voucher.minOrderAmount }} 可用</span>
+          </div>
+          <div v-else class="info-row">
+            <span class="info-label">使用条件</span>
+            <span class="info-value">无门槛</span>
+          </div>
+        </div>
+
         <!-- Detail info card -->
         <div class="info-card card">
           <div class="info-row">
@@ -75,11 +106,11 @@
             <span class="info-value">{{ formatDateTime(voucher.expireAt) }}</span>
           </div>
           <div class="info-divider" />
-          <div class="info-row">
+          <div v-if="voucher.voucherType !== 'COUPON'" class="info-row">
             <span class="info-label">资源描述</span>
             <span class="info-value info-desc">{{ voucher.remark || '--' }}</span>
           </div>
-          <div class="info-divider" />
+          <div v-if="voucher.voucherType !== 'COUPON'" class="info-divider" />
           <div class="info-row">
             <span class="info-label">发放时间</span>
             <span class="info-value">{{ formatDateTime(voucher.issuedAt) }}</span>
@@ -303,6 +334,42 @@ onMounted(() => {
   border-radius: var(--radius-sm);
 }
 
+/* Coupon header */
+.voucher-header.is-coupon {
+  background: #fff7e6;
+  border-color: #ffd666;
+}
+
+.coupon-value-block {
+  text-align: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.coupon-value-block .coupon-symbol {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ee0a24;
+}
+
+.coupon-value-block .coupon-amount {
+  font-size: 36px;
+  font-weight: 700;
+  color: #ee0a24;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+}
+
+.coupon-info-card {
+  background: #fff7e6;
+  border-color: #ffd666;
+}
+
+.coupon-discount {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fa8c16;
+}
+
+/* Resource name */
 .resource-name {
   font-size: var(--font-size-heading);
   font-weight: 700;

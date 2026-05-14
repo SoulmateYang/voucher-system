@@ -11,12 +11,15 @@ import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherBatch;
 import com.example.voucher.mapper.AuditLogMapper;
 import com.example.voucher.mapper.VerificationLogMapper;
+import com.example.voucher.mapper.VoucherBatchMapper;
 import com.example.voucher.mapper.VoucherMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -29,6 +32,7 @@ public class VoucherService {
     private final VoucherMapper voucherMapper;
     private final VerificationLogMapper verificationLogMapper;
     private final AuditLogMapper auditLogMapper;
+    private final VoucherBatchMapper batchMapper;
     private final VoucherCodeUtil voucherCodeUtil;
 
     public Map<String, Object> lookup(String voucherCode) {
@@ -54,17 +58,29 @@ public class VoucherService {
             throw new BusinessException(4001, "该券已被核销");
         }
 
+        VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
+        if (batch == null) {
+            throw new BusinessException("批次不存在");
+        }
         Map<String, Object> result = new HashMap<>();
         result.put("voucherCode", voucher.getVoucherCode());
         result.put("holderName", voucher.getHolderName());
+        result.put("voucherType", batch.getVoucherType());
         result.put("resourceType", "因私使用");
         result.put("validity", voucher.getExpireAt().toString());
         result.put("status", "valid");
+        result.put("faceValue", voucher.getFaceValue());
+        if ("COUPON".equals(batch.getVoucherType())) {
+            result.put("discountType", batch.getDiscountType());
+            result.put("discountValue", batch.getDiscountValue());
+            result.put("minOrderAmount", batch.getMinOrderAmount());
+        }
         return result;
     }
 
     @Transactional
-    public Map<String, Object> verify(String voucherCode, String operatorId, String operatorName) {
+    public Map<String, Object> verify(String voucherCode, String operatorId, String operatorName,
+                                       BigDecimal orderAmount) {
         Voucher voucher = voucherMapper.selectByCode(voucherCode);
         if (voucher == null) {
             throw new BusinessException(4004, "券不存在");
@@ -85,6 +101,24 @@ public class VoucherService {
                 Map.of("voucherCode", voucher.getVoucherCode(), "reason", "verify-triggered")
             );
             throw new BusinessException(4002, "该券已过期");
+        }
+
+        VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
+        if (batch == null) {
+            throw new BusinessException("批次不存在");
+        }
+        String voucherType = batch.getVoucherType();
+
+        // Coupon-specific validation
+        if ("COUPON".equals(voucherType)) {
+            if ("PERCENTAGE".equals(batch.getDiscountType()) && orderAmount == null) {
+                throw new BusinessException(4005, "请输入订单金额");
+            }
+            if (orderAmount != null && batch.getMinOrderAmount() != null
+                && orderAmount.compareTo(batch.getMinOrderAmount()) < 0) {
+                throw new BusinessException(4005,
+                    String.format("订单金额未达到使用门槛（最低消费 %.2f 元）", batch.getMinOrderAmount()));
+            }
         }
 
         voucher.setStatus("USED");
@@ -115,9 +149,28 @@ public class VoucherService {
         Map<String, Object> result = new HashMap<>();
         result.put("voucherCode", voucher.getVoucherCode());
         result.put("holderName", voucher.getHolderName());
-        result.put("resourceType", "因私使用");
-        result.put("verifiedAt", log.getVerifiedAt().toString());
+        result.put("voucherType", voucherType);
         result.put("status", "used");
+        result.put("verifiedAt", log.getVerifiedAt().toString());
+
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if ("COUPON".equals(voucherType) && voucher.getFaceValue() != null) {
+            if ("FIXED_AMOUNT".equals(batch.getDiscountType())) {
+                discountAmount = voucher.getFaceValue();
+            } else if (orderAmount != null) {
+                BigDecimal rate = batch.getDiscountValue()
+                    .divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP);
+                BigDecimal raw = orderAmount.multiply(rate).setScale(2, RoundingMode.HALF_UP);
+                if (raw.compareTo(voucher.getFaceValue()) > 0) {
+                    result.put("cappedByFaceValue", true);
+                    discountAmount = voucher.getFaceValue();
+                } else {
+                    result.put("cappedByFaceValue", false);
+                    discountAmount = raw;
+                }
+            }
+        }
+        result.put("discountAmount", discountAmount);
         return result;
     }
 
@@ -198,6 +251,14 @@ public class VoucherService {
         voucher.setIssuedAt(LocalDateTime.now());
         voucher.setExpireAt(LocalDate.now().plusDays(batch.getValidDays()).atTime(LocalTime.MAX));
 
+        if ("COUPON".equals(batch.getVoucherType())) {
+            if ("FIXED_AMOUNT".equals(batch.getDiscountType())) {
+                voucher.setFaceValue(batch.getDiscountValue());
+            } else {
+                voucher.setFaceValue(batch.getFaceValue());
+            }
+        }
+
         for (int i = 0; i < 3; i++) {
             voucher.setVoucherCode(voucherCodeUtil.generate());
             try {
@@ -214,25 +275,110 @@ public class VoucherService {
         return voucherMapper.selectById(id);
     }
 
-    public List<Voucher> listByHolder(String holderId) {
-        return voucherMapper.selectByHolder(holderId);
+    public Map<String, Object> getDetailById(Long id) {
+        Voucher voucher = voucherMapper.selectById(id);
+        if (voucher == null) return null;
+
+        VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", voucher.getId());
+        result.put("batchId", voucher.getBatchId());
+        result.put("voucherCode", voucher.getVoucherCode());
+        result.put("holderId", voucher.getHolderId());
+        result.put("holderName", voucher.getHolderName());
+        result.put("status", voucher.getStatus());
+        result.put("issuedAt", voucher.getIssuedAt());
+        result.put("expireAt", voucher.getExpireAt());
+        result.put("usedAt", voucher.getUsedAt());
+        result.put("cancelledAt", voucher.getCancelledAt());
+        result.put("approveRef", voucher.getApproveRef());
+        result.put("remark", voucher.getRemark());
+        result.put("faceValue", voucher.getFaceValue());
+        if (batch != null) {
+            result.put("voucherType", batch.getVoucherType());
+            result.put("discountType", batch.getDiscountType());
+            result.put("discountValue", batch.getDiscountValue());
+            result.put("minOrderAmount", batch.getMinOrderAmount());
+        }
+        return result;
+    }
+
+    public List<Map<String, Object>> listByHolder(String holderId) {
+        List<Voucher> vouchers = voucherMapper.selectByHolder(holderId);
+        Map<Long, String> batchTypeMap = getBatchTypeMap(vouchers);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Voucher v : vouchers) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", v.getId());
+            item.put("batchId", v.getBatchId());
+            item.put("voucherCode", v.getVoucherCode());
+            item.put("holderId", v.getHolderId());
+            item.put("holderName", v.getHolderName());
+            item.put("status", v.getStatus());
+            item.put("issuedAt", v.getIssuedAt());
+            item.put("expireAt", v.getExpireAt());
+            item.put("usedAt", v.getUsedAt());
+            item.put("cancelledAt", v.getCancelledAt());
+            item.put("approveRef", v.getApproveRef());
+            item.put("remark", v.getRemark());
+            item.put("faceValue", v.getFaceValue());
+            item.put("voucherType", batchTypeMap.get(v.getBatchId()));
+            result.add(item);
+        }
+        return result;
     }
 
     public Map<String, Object> listByHolderPaged(String holderId, int page, int size) {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<Voucher> p =
             new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
-        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Voucher> result =
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<Voucher> pageResult =
             voucherMapper.selectPage(p,
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Voucher>()
                     .eq(Voucher::getHolderId, holderId)
                     .orderByDesc(Voucher::getCreatedAt)
             );
+        List<Voucher> vouchers = pageResult.getRecords();
+        Map<Long, String> batchTypeMap = getBatchTypeMap(vouchers);
+        List<Map<String, Object>> records = new ArrayList<>();
+        for (Voucher v : vouchers) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("id", v.getId());
+            item.put("batchId", v.getBatchId());
+            item.put("voucherCode", v.getVoucherCode());
+            item.put("holderId", v.getHolderId());
+            item.put("holderName", v.getHolderName());
+            item.put("status", v.getStatus());
+            item.put("issuedAt", v.getIssuedAt());
+            item.put("expireAt", v.getExpireAt());
+            item.put("usedAt", v.getUsedAt());
+            item.put("cancelledAt", v.getCancelledAt());
+            item.put("approveRef", v.getApproveRef());
+            item.put("remark", v.getRemark());
+            item.put("faceValue", v.getFaceValue());
+            item.put("voucherType", batchTypeMap.get(v.getBatchId()));
+            records.add(item);
+        }
         Map<String, Object> res = new HashMap<>();
-        res.put("records", result.getRecords());
-        res.put("total", result.getTotal());
+        res.put("records", records);
+        res.put("total", pageResult.getTotal());
         res.put("page", page);
         res.put("size", size);
         return res;
+    }
+
+    private Map<Long, String> getBatchTypeMap(List<Voucher> vouchers) {
+        Set<Long> batchIds = vouchers.stream()
+            .map(Voucher::getBatchId)
+            .collect(java.util.stream.Collectors.toSet());
+        if (batchIds.isEmpty()) {
+            return Map.of();
+        }
+        List<VoucherBatch> batches = batchMapper.selectBatchIds(batchIds);
+        Map<Long, String> map = new HashMap<>();
+        for (VoucherBatch b : batches) {
+            map.put(b.getId(), b.getVoucherType());
+        }
+        return map;
     }
 
     public List<Voucher> listByBatchId(Long batchId) {

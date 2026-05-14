@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -27,6 +28,14 @@ public class VoucherBatch {
     private String status;
 
     private String createdBy;
+
+    private String discountType;
+
+    private BigDecimal discountValue;
+
+    private BigDecimal minOrderAmount;
+
+    private BigDecimal faceValue;
 
     private LocalDateTime createdAt;
 

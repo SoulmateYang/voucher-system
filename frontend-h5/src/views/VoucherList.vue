@@ -45,12 +45,20 @@
               v-for="item in vouchers"
               :key="item.id"
               class="voucher-card card"
+              :class="{ 'is-coupon': item.voucherType === 'COUPON' }"
               @click="goToDetail(item.id)"
             >
               <div class="voucher-card-header">
-                <span class="voucher-card-title">{{ item.remark || '卡券' }}</span>
+                <div class="voucher-card-left">
+                  <div v-if="item.voucherType === 'COUPON'" class="coupon-value">
+                    <span class="coupon-symbol">¥</span>
+                    <span class="coupon-amount">{{ item.faceValue }}</span>
+                  </div>
+                  <span class="voucher-card-title">{{ item.remark || '卡券' }}</span>
+                </div>
                 <van-tag
                   :class="statusTagClass(item.status)"
+                  :type="item.voucherType === 'COUPON' ? 'warning' : ''"
                   size="small"
                 >
                   {{ statusLabel(item.status) }}
@@ -235,20 +243,49 @@ onMounted(() => {
 
 .voucher-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: var(--spacing-sm);
+}
+
+.voucher-card-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.coupon-value {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+
+.coupon-symbol {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ee0a24;
+  margin-right: 2px;
+}
+
+.coupon-amount {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ee0a24;
+  font-family: 'JetBrains Mono', 'SF Mono', monospace;
+  line-height: 1;
+}
+
+.voucher-card.is-coupon {
+  background: #fff7e6;
+  border-color: #ffd666;
 }
 
 .voucher-card-title {
   font-size: var(--font-size-card-title);
   font-weight: 600;
   color: var(--color-text-primary);
-  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-right: var(--spacing-xs);
 }
 
 .voucher-card-meta {

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.Version;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -39,6 +40,8 @@ public class Voucher {
     private String approveRef;
 
     private String remark;
+
+    private BigDecimal faceValue;
 
     private LocalDateTime createdAt;
 

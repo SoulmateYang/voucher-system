@@ -17,6 +17,7 @@ D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\vouche
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\service\ReportService.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\config\MyBatisPlusConfig.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\mapper\VoucherMapper.java
+D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\common\VoucherType.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\controller\CallbackController.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\service\VoucherBatchService.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\VerificationLog.java

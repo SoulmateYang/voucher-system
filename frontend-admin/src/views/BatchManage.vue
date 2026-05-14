@@ -18,22 +18,29 @@
         empty-text="暂无批次数据"
         style="width: 100%"
       >
-        <el-table-column prop="name" label="名称" min-width="160" />
+        <el-table-column prop="batchName" label="名称" min-width="140" />
+        <el-table-column prop="voucherType" label="券类型" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="row.voucherType === 'COUPON' ? 'warning' : ''" size="small">
+              {{ row.voucherType === 'COUPON' ? '优惠券' : '因私使用' }}
+            </el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="resourceDesc" label="资源描述" min-width="200" show-overflow-tooltip />
         <el-table-column prop="validDays" label="有效天数" width="100">
           <template #default="{ row }">
             {{ row.validDays }} 天
           </template>
         </el-table-column>
-        <el-table-column prop="issuedCount" label="已发数量" width="100" align="center">
+        <el-table-column prop="totalCount" label="已发数量" width="100" align="center">
           <template #default="{ row }">
-            <span class="mono">{{ row.issuedCount || 0 }}</span>
+            <span class="mono">{{ row.totalCount || 0 }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="{ row }">
             <el-switch
-              :model-value="row.status === 'active'"
+              :model-value="row.status === 'ACTIVE'"
               :loading="row._statusLoading"
               @change="(val) => toggleBatchStatus(row, val)"
               inline-prompt
@@ -81,10 +88,16 @@
         :rules="createRules"
         label-position="top"
       >
+        <el-form-item label="券类型" prop="voucherType">
+          <el-radio-group v-model="createForm.voucherType">
+            <el-radio value="RESOURCE_USAGE">因私使用</el-radio>
+            <el-radio value="COUPON">优惠券</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item label="批次名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入批次名称" maxlength="50" />
         </el-form-item>
-        <el-form-item label="资源描述" prop="resourceDesc">
+        <el-form-item v-if="createForm.voucherType === 'RESOURCE_USAGE'" label="资源描述" prop="resourceDesc">
           <el-input
             v-model="createForm.resourceDesc"
             type="textarea"
@@ -102,6 +115,43 @@
           />
           <span class="form-hint">天（从发放之日起计算）</span>
         </el-form-item>
+        <template v-if="createForm.voucherType === 'COUPON'">
+          <el-form-item label="折扣类型" prop="discountType">
+            <el-radio-group v-model="createForm.discountType">
+              <el-radio value="FIXED_AMOUNT">满减</el-radio>
+              <el-radio value="PERCENTAGE">折扣率</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item label="优惠金额" prop="discountValue">
+            <el-input-number
+              v-model="createForm.discountValue"
+              :min="0.01"
+              :precision="2"
+              controls-position="right"
+            />
+            <span class="form-hint">
+              {{ createForm.discountType === 'PERCENTAGE' ? '%（例如输入15表示85折）' : '元' }}
+            </span>
+          </el-form-item>
+          <el-form-item v-if="createForm.discountType === 'PERCENTAGE'" label="面额上限" prop="faceValue">
+            <el-input-number
+              v-model="createForm.faceValue"
+              :min="0.01"
+              :precision="2"
+              controls-position="right"
+            />
+            <span class="form-hint">元（最高抵扣金额）</span>
+          </el-form-item>
+          <el-form-item label="最低消费" prop="minOrderAmount">
+            <el-input-number
+              v-model="createForm.minOrderAmount"
+              :min="0"
+              :precision="2"
+              controls-position="right"
+            />
+            <span class="form-hint">元（0表示无门槛）</span>
+          </el-form-item>
+        </template>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -121,7 +171,12 @@
     >
       <template v-if="currentBatch">
         <p class="issue-batch-info">
-          批次：<strong>{{ currentBatch.name }}</strong>
+          批次：<strong>{{ currentBatch.batchName }}</strong>
+          <el-tag v-if="currentBatch.voucherType === 'COUPON'" type="warning" size="small" style="margin-left: 8px">优惠券</el-tag>
+          <span v-if="currentBatch.voucherType === 'COUPON' && currentBatch.discountType" style="margin-left: 8px; font-size: 12px; color: #969799">
+            {{ currentBatch.discountType === 'FIXED_AMOUNT' ? `满减 ¥${currentBatch.discountValue}` : `${currentBatch.discountValue}%折扣` }}
+            <template v-if="currentBatch.minOrderAmount > 0"> · 满¥{{ currentBatch.minOrderAmount }}可用</template>
+          </span>
         </p>
 
         <el-form
@@ -187,7 +242,7 @@
     <!-- Voucher Detail Dialog -->
     <el-dialog
       v-model="showVoucherDialog"
-      :title="`券码列表 - ${currentBatch?.name || ''}`"
+      :title="`券码列表 - ${currentBatch?.batchName || ''}`"
       width="520px"
       destroy-on-close
     >
@@ -204,9 +259,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="holderName" label="持有人" width="100" />
+        <el-table-column v-if="currentBatch?.voucherType === 'COUPON'" label="面额" width="100" align="right">
+          <template #default="{ row }">
+            <span class="mono">¥{{ row.faceValue || 0 }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
           <template #default="{ row }">
-            <span class="status-badge" :class="'status-' + row.status">
+            <span class="status-badge" :class="'status-' + statusClass(row.status)">
               {{ statusText(row.status) }}
             </span>
           </template>
@@ -239,8 +299,9 @@ async function fetchBatchList() {
       page: currentPage.value,
       pageSize: pageSize.value,
     })
-    batchList.value = res.data?.list || []
-    total.value = res.data?.total || 0
+    const list = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+    batchList.value = list
+    total.value = res.data?.total || list.length
   } catch {
     batchList.value = []
   } finally {
@@ -253,7 +314,7 @@ async function toggleBatchStatus(row, enabled) {
   try {
     // Call API to toggle status
     // await updateBatchStatus(row.id, enabled ? 'active' : 'inactive')
-    row.status = enabled ? 'active' : 'inactive'
+    row.status = enabled ? 'ACTIVE' : 'INACTIVE'
     ElMessage.success(enabled ? '已启用' : '已停用')
   } catch {
     ElMessage.error('操作失败')
@@ -269,14 +330,57 @@ const createLoading = ref(false)
 
 const createForm = reactive({
   name: '',
+  voucherType: 'RESOURCE_USAGE',
   resourceDesc: '',
   validDays: 30,
+  discountType: 'FIXED_AMOUNT',
+  discountValue: null,
+  minOrderAmount: null,
+  faceValue: null,
 })
 
 const createRules = {
   name: [{ required: true, message: '请输入批次名称', trigger: 'blur' }],
-  resourceDesc: [{ required: true, message: '请输入资源描述', trigger: 'blur' }],
+  voucherType: [{ required: true, message: '请选择券类型', trigger: 'change' }],
+  resourceDesc: [
+    {
+      validator: (rule, value, callback) => {
+        if (createForm.voucherType === 'RESOURCE_USAGE' && !value) {
+          callback(new Error('请输入资源描述'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
   validDays: [{ required: true, message: '请设置有效天数', trigger: 'blur' }],
+  discountType: [
+    {
+      required: true,
+      validator: (rule, value, callback) => {
+        if (createForm.voucherType === 'COUPON' && !value) {
+          callback(new Error('请选择折扣类型'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'change',
+    },
+  ],
+  discountValue: [
+    {
+      required: true,
+      validator: (rule, value, callback) => {
+        if (createForm.voucherType === 'COUPON' && (!value || value <= 0)) {
+          callback(new Error('请输入优惠金额'))
+        } else {
+          callback()
+        }
+      },
+      trigger: 'blur',
+    },
+  ],
 }
 
 async function handleCreateBatch() {
@@ -289,11 +393,21 @@ async function handleCreateBatch() {
 
   createLoading.value = true
   try {
-    await createBatch({
-      name: createForm.name,
+    const payload = {
+      batchName: createForm.name,
+      voucherType: createForm.voucherType,
       resourceDesc: createForm.resourceDesc,
       validDays: createForm.validDays,
-    })
+    }
+    if (createForm.voucherType === 'COUPON') {
+      payload.discountType = createForm.discountType
+      payload.discountValue = createForm.discountValue
+      payload.minOrderAmount = createForm.minOrderAmount
+      if (createForm.discountType === 'PERCENTAGE') {
+        payload.faceValue = createForm.faceValue
+      }
+    }
+    await createBatch(payload)
     ElMessage.success('批次创建成功')
     showCreateDialog.value = false
     resetCreateForm()
@@ -307,8 +421,13 @@ async function handleCreateBatch() {
 
 function resetCreateForm() {
   createForm.name = ''
+  createForm.voucherType = 'RESOURCE_USAGE'
   createForm.resourceDesc = ''
   createForm.validDays = 30
+  createForm.discountType = 'FIXED_AMOUNT'
+  createForm.discountValue = null
+  createForm.minOrderAmount = null
+  createForm.faceValue = null
 }
 
 // ==================== Issue Vouchers ====================
@@ -411,18 +530,29 @@ async function handleViewDetail(batch) {
   showVoucherDialog.value = true
   try {
     const res = await getVouchersByBatch(batch.id, { page: 1, pageSize: 50 })
-    voucherList.value = res.data?.list || []
+    const list = Array.isArray(res.data) ? res.data : (res.data?.list || [])
+    voucherList.value = list
   } catch {
     voucherList.value = []
   }
 }
 
+function statusClass(status) {
+  const map = {
+    ISSUED: 'valid',
+    USED: 'used',
+    EXPIRED: 'expired',
+    CANCELLED: 'cancelled',
+  }
+  return map[status] || ''
+}
+
 function statusText(status) {
   const map = {
-    valid: '有效',
-    used: '已核销',
-    expired: '已过期',
-    cancelled: '已作废',
+    ISSUED: '有效',
+    USED: '已核销',
+    EXPIRED: '已过期',
+    CANCELLED: '已作废',
   }
   return map[status] || status
 }

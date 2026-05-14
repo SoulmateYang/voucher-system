@@ -25,5 +25,5 @@ export function getMyVouchers(params = {}) {
  * @returns {Promise}
  */
 export function getVoucherDetail(id) {
-  return request.get(`/vouchers/${id}`);
+  return request.get(`/vouchers/my/${id}`);
 }

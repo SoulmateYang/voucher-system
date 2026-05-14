@@ -4,8 +4,8 @@ export function verifyVoucher(voucherCode) {
   return request.post('/vouchers/lookup', { voucherCode })
 }
 
-export function confirmVerify(voucherCode) {
-  return request.post('/vouchers/confirm', { voucherCode })
+export function confirmVerify(voucherCode, orderAmount) {
+  return request.post('/vouchers/confirm', { voucherCode, orderAmount })
 }
 
 export function getTodayRecords(params) {

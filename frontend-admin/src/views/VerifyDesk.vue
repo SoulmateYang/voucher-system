@@ -76,6 +76,20 @@
                 <span class="detail-value">{{ voucherDetail.holderName }}</span>
               </div>
               <div class="detail-row">
+                <label>券类型</label>
+                <span class="detail-value">
+                  <span class="status-badge" :class="voucherDetail.voucherType === 'COUPON' ? 'status-warning' : 'status-used'">
+                    {{ voucherDetail.voucherType === 'COUPON' ? '优惠券' : '因私使用' }}
+                  </span>
+                </span>
+              </div>
+              <div v-if="voucherDetail.voucherType === 'COUPON'" class="detail-row">
+                <label>面额</label>
+                <span class="detail-value" style="font-size: 20px; font-weight: 600; color: #ee0a24">
+                  ¥{{ voucherDetail.faceValue }}
+                </span>
+              </div>
+              <div v-if="voucherDetail.voucherType !== 'COUPON'" class="detail-row">
                 <label>资源类型</label>
                 <span class="detail-value">{{ voucherDetail.resourceType }}</span>
               </div>
@@ -98,7 +112,23 @@
                   {{ voucherDetail.voucherCode }}
                 </span>
               </div>
+              <div v-if="verifyResult.show" class="detail-row">
+                <label>抵扣金额</label>
+                <span class="detail-value" style="font-size: 18px; font-weight: 600; color: #07c160">
+                  ¥{{ verifyResult.discountAmount }}
+                </span>
+              </div>
             </div>
+
+            <el-input-number
+              v-if="voucherDetail.voucherType === 'COUPON' && voucherDetail.discountType === 'PERCENTAGE' && voucherDetail.status === 'valid'"
+              v-model="orderAmount"
+              :min="0"
+              :precision="2"
+              :controls="false"
+              placeholder="请输入订单金额"
+              style="width: 100%; margin-bottom: 12px"
+            />
 
             <el-button
               type="primary"
@@ -170,6 +200,7 @@ const STATUS_MAP = {
 // State
 const scanInputRef = ref(null)
 const scanCode = ref('')
+const orderAmount = ref(null)
 const alertVisible = ref(false)
 const alertTitle = ref('')
 const alertDescription = ref('')
@@ -177,6 +208,7 @@ const alertType = ref('success')
 const voucherDetail = ref(null)
 const todayRecords = ref([])
 const activeScanIndex = ref(-1)
+const verifyResult = reactive({ show: false, discountAmount: 0 })
 
 const recentScans = reactive([])
 
@@ -235,7 +267,14 @@ async function triggerLookup() {
       status: data.status,
       statusText: statusInfo.text,
       voucherCode: code,
+      voucherType: data.voucherType || 'RESOURCE_USAGE',
+      faceValue: data.faceValue,
+      discountType: data.discountType,
+      discountValue: data.discountValue,
+      minOrderAmount: data.minOrderAmount,
     }
+    verifyResult.show = false
+    orderAmount.value = null
 
     // Add to recent scans
     const now = new Date()
@@ -311,8 +350,15 @@ async function handleConfirmVerify() {
   }
 
   try {
-    await confirmVerify(code)
-    showAlert('success', '核销成功', `券码 ${code} 已成功核销`)
+    const res = await confirmVerify(code, orderAmount.value)
+    const data = res.data || {}
+    verifyResult.show = true
+    verifyResult.discountAmount = data.discountAmount || 0
+
+    const successMsg = data.discountAmount > 0
+      ? `券码 ${code} 已成功核销，抵扣 ¥${data.discountAmount}`
+      : `券码 ${code} 已成功核销`
+    showAlert('success', '核销成功', successMsg)
     alertType.value = 'success'
 
     // Update voucher detail status

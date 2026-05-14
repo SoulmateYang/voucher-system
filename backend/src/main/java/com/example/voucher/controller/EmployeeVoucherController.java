@@ -34,6 +34,6 @@ public class EmployeeVoucherController {
         if (voucher == null || !voucher.getHolderId().equals(holderId)) {
             return Result.error(403, "无权查看该券");
         }
-        return Result.success(voucher);
+        return Result.success(voucherService.getDetailById(id));
     }
 }

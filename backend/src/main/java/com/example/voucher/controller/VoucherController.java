@@ -29,12 +29,16 @@ public class VoucherController {
     }
 
     @PostMapping("/confirm")
-    public Result<Object> confirm(@RequestBody Map<String, String> body,
+    public Result<Object> confirm(@RequestBody Map<String, Object> body,
                                   Authentication auth) {
-        String voucherCode = body.get("voucherCode");
+        String voucherCode = (String) body.get("voucherCode");
         String operatorId = auth.getName();
         String operatorName = authService.getUserName(operatorId);
-        return Result.success(voucherService.verify(voucherCode, operatorId, operatorName));
+        java.math.BigDecimal orderAmount = null;
+        if (body.get("orderAmount") != null) {
+            orderAmount = new java.math.BigDecimal(body.get("orderAmount").toString());
+        }
+        return Result.success(voucherService.verify(voucherCode, operatorId, operatorName, orderAmount));
     }
 
     @GetMapping("/today-records")

@@ -2,6 +2,7 @@ package com.example.voucher.service;
 
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.example.voucher.common.BusinessException;
+import com.example.voucher.common.VoucherType;
 import com.example.voucher.dto.CreateBatchRequest;
 import com.example.voucher.dto.IssueVoucherRequest;
 import com.example.voucher.entity.VoucherBatch;
@@ -19,13 +20,31 @@ public class VoucherBatchService {
     private final VoucherService voucherService;
 
     public VoucherBatch create(CreateBatchRequest request, String operatorName) {
+        if (!VoucherType.isValid(request.getVoucherType())) {
+            throw new BusinessException("无效的券类型: " + request.getVoucherType());
+        }
+        if (VoucherType.isCoupon(request.getVoucherType())) {
+            if (request.getDiscountType() == null || request.getDiscountValue() == null) {
+                throw new BusinessException("优惠券必须配置折扣类型和折扣值");
+            }
+            VoucherType.validateDiscountType(request.getDiscountType());
+            if ("PERCENTAGE".equals(request.getDiscountType()) && request.getFaceValue() == null) {
+                throw new BusinessException("折扣率优惠券必须设置面额上限");
+            }
+        }
+
         VoucherBatch batch = new VoucherBatch();
         batch.setBatchName(request.getBatchName());
+        batch.setVoucherType(request.getVoucherType());
         batch.setResourceDesc(request.getResourceDesc());
         batch.setValidDays(request.getValidDays());
         batch.setTotalCount(0);
         batch.setStatus("ACTIVE");
         batch.setCreatedBy(operatorName);
+        batch.setDiscountType(request.getDiscountType());
+        batch.setDiscountValue(request.getDiscountValue());
+        batch.setMinOrderAmount(request.getMinOrderAmount());
+        batch.setFaceValue(request.getFaceValue());
         batchMapper.insert(batch);
         return batch;
     }
