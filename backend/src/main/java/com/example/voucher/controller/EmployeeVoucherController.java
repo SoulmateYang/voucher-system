@@ -20,10 +20,13 @@ public class EmployeeVoucherController {
     @GetMapping
     public Result<Object> list(Authentication auth,
                                 @RequestParam(defaultValue = "1") int page,
-                                @RequestParam(defaultValue = "20") int size) {
+                                @RequestParam(defaultValue = "20") int size,
+                                @RequestParam(required = false) String keyword,
+                                @RequestParam(required = false) String status,
+                                @RequestParam(required = false) String voucherType) {
         var user = authService.getCurrentUser(auth.getName());
         String holderId = user != null ? user.getUsername() : auth.getName();
-        return Result.success(voucherService.listByHolderPaged(holderId, page, size));
+        return Result.success(voucherService.listByHolderPaged(holderId, page, size, keyword, status, voucherType));
     }
 
     @GetMapping("/{id}")

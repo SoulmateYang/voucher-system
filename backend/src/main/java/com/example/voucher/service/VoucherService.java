@@ -328,19 +328,41 @@ public class VoucherService {
         return result;
     }
 
-    public Map<String, Object> listByHolderPaged(String holderId, int page, int size) {
+    public Map<String, Object> listByHolderPaged(String holderId, int page, int size,
+                                                  String keyword, String status, String voucherType) {
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<Voucher> p =
             new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(page, size);
+
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Voucher> wrapper =
+            new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(Voucher::getHolderId, holderId);
+
+        // 排除赠送中的卡券
+        wrapper.ne(Voucher::getStatus, "GIFTING");
+
+        if (status != null && !status.isEmpty()) {
+            wrapper.eq(Voucher::getStatus, status);
+        }
+        if (keyword != null && !keyword.isEmpty()) {
+            wrapper.like(Voucher::getRemark, keyword);
+        }
+
+        // 排序：置顶优先 → 收藏优先 → 过期时间升序
+        wrapper.orderByDesc(Voucher::getIsPinned)
+               .orderByDesc(Voucher::getIsFavorite)
+               .orderByAsc(Voucher::getExpireAt);
+
         com.baomidou.mybatisplus.extension.plugins.pagination.Page<Voucher> pageResult =
-            voucherMapper.selectPage(p,
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Voucher>()
-                    .eq(Voucher::getHolderId, holderId)
-                    .orderByDesc(Voucher::getCreatedAt)
-            );
+            voucherMapper.selectPage(p, wrapper);
+
         List<Voucher> vouchers = pageResult.getRecords();
         Map<Long, String> batchTypeMap = getBatchTypeMap(vouchers);
         List<Map<String, Object>> records = new ArrayList<>();
         for (Voucher v : vouchers) {
+            String vt = batchTypeMap.get(v.getBatchId());
+            if (voucherType != null && !voucherType.isEmpty() && !voucherType.equals(vt)) {
+                continue;
+            }
             Map<String, Object> item = new HashMap<>();
             item.put("id", v.getId());
             item.put("batchId", v.getBatchId());
@@ -355,7 +377,11 @@ public class VoucherService {
             item.put("approveRef", v.getApproveRef());
             item.put("remark", v.getRemark());
             item.put("faceValue", v.getFaceValue());
-            item.put("voucherType", batchTypeMap.get(v.getBatchId()));
+            item.put("isFavorite", v.getIsFavorite());
+            item.put("isPinned", v.getIsPinned());
+            item.put("source", v.getSource());
+            item.put("transferable", v.getTransferable());
+            item.put("voucherType", vt);
             records.add(item);
         }
         Map<String, Object> res = new HashMap<>();
@@ -401,5 +427,57 @@ public class VoucherService {
             .createdAt(LocalDateTime.now())
             .build();
         auditLogMapper.insert(auditLog);
+    }
+
+    public void toggleFavorite(Long voucherId, String holderId) {
+        Voucher voucher = voucherMapper.selectById(voucherId);
+        if (voucher == null || !voucher.getHolderId().equals(holderId)) {
+            throw new BusinessException("卡券不存在或无权操作");
+        }
+        voucher.setIsFavorite(voucher.getIsFavorite() != null && voucher.getIsFavorite() == 1 ? 0 : 1);
+        voucherMapper.updateById(voucher);
+    }
+
+    public void togglePin(Long voucherId, String holderId) {
+        Voucher voucher = voucherMapper.selectById(voucherId);
+        if (voucher == null || !voucher.getHolderId().equals(holderId)) {
+            throw new BusinessException("卡券不存在或无权操作");
+        }
+        if (voucher.getIsPinned() != null && voucher.getIsPinned() == 1) {
+            voucher.setIsPinned(0);
+            voucher.setPinnedAt(null);
+        } else {
+            voucher.setIsPinned(1);
+            voucher.setPinnedAt(LocalDateTime.now());
+        }
+        voucherMapper.updateById(voucher);
+    }
+
+    @Transactional
+    public Map<String, Object> addManual(Voucher voucher, String holderId, String holderName) {
+        voucher.setHolderId(holderId);
+        voucher.setHolderName(holderName);
+        voucher.setStatus("ISSUED");
+        voucher.setVersion(0);
+        voucher.setSource("MANUAL");
+        voucher.setTransferable(1);
+        voucher.setIssuedAt(LocalDateTime.now());
+        voucher.setCreatedAt(LocalDateTime.now());
+        voucher.setUpdatedAt(LocalDateTime.now());
+
+        for (int i = 0; i < 3; i++) {
+            voucher.setVoucherCode(voucherCodeUtil.generate());
+            try {
+                voucherMapper.insert(voucher);
+                break;
+            } catch (DuplicateKeyException e) {
+                if (i == 2) throw new BusinessException("券码生成冲突，请重试");
+            }
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("id", voucher.getId());
+        result.put("voucherCode", voucher.getVoucherCode());
+        return result;
     }
 }
