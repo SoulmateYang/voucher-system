@@ -182,6 +182,7 @@ const STATUS_MAP = {
 };
 
 const canGift = computed(() => {
+  console.log('canGift check:', voucher.value?.status, voucher.value?.transferable);
   return voucher.value?.status === 'ISSUED'
     && voucher.value?.transferable !== 0;
 });
