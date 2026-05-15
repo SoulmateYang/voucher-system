@@ -283,7 +283,11 @@ async function fetchDetail() {
 
     // Generate QR code after DOM update
     await nextTick();
-    generateQRCode(data.voucherCode);
+    try {
+      generateQRCode(data.voucherCode);
+    } catch (e) {
+      console.error('QR生成失败:', e);
+    }
   } catch (err) {
     // 尝试从缓存读取
     try {
