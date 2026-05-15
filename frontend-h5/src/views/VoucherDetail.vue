@@ -99,6 +99,13 @@
           </div>
         </div>
 
+        <!-- Gift action -->
+        <div v-if="canGift" class="gift-section card">
+          <van-button type="warning" block round @click="onGift">
+            赠送给好友
+          </van-button>
+        </div>
+
         <!-- Detail info card -->
         <div class="info-card card">
           <div class="info-row">
@@ -148,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Toast, showToast } from 'vant';
 import QRCode from 'qrcodejs2';
@@ -169,6 +176,14 @@ const STATUS_MAP = {
   EXPIRED: { label: '已过期', class: 'tag-expired' },
   CANCELLED: { label: '已作废', class: 'tag-revoked' },
 };
+
+const canGift = computed(() => {
+  return voucher.value?.status === 'ISSUED';
+});
+
+function onGift() {
+  router.push({ name: 'GiftSend', params: { id: voucher.value.id } });
+}
 
 let qrCodeInstance = null;
 
@@ -460,5 +475,10 @@ onMounted(() => {
 .info-divider {
   height: 1px;
   background: var(--color-border-light);
+}
+
+.gift-section {
+  margin-bottom: var(--spacing-sm);
+  padding: var(--spacing-md);
 }
 </style>
