@@ -58,22 +58,26 @@ public class VoucherService {
             throw new BusinessException(4001, "该券已被核销");
         }
 
-        VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
-        if (batch == null) {
-            throw new BusinessException("批次不存在");
+        VoucherBatch batch = null;
+        if (voucher.getBatchId() != null) {
+            batch = batchMapper.selectById(voucher.getBatchId());
         }
         Map<String, Object> result = new HashMap<>();
         result.put("voucherCode", voucher.getVoucherCode());
         result.put("holderName", voucher.getHolderName());
-        result.put("voucherType", batch.getVoucherType());
         result.put("resourceType", "因私使用");
         result.put("validity", voucher.getExpireAt().toString());
         result.put("status", "valid");
         result.put("faceValue", voucher.getFaceValue());
-        if ("COUPON".equals(batch.getVoucherType())) {
-            result.put("discountType", batch.getDiscountType());
-            result.put("discountValue", batch.getDiscountValue());
-            result.put("minOrderAmount", batch.getMinOrderAmount());
+        if (batch != null) {
+            result.put("voucherType", batch.getVoucherType());
+            if ("COUPON".equals(batch.getVoucherType())) {
+                result.put("discountType", batch.getDiscountType());
+                result.put("discountValue", batch.getDiscountValue());
+                result.put("minOrderAmount", batch.getMinOrderAmount());
+            }
+        } else {
+            result.put("voucherType", "RESOURCE_USAGE");
         }
         return result;
     }
@@ -103,14 +107,14 @@ public class VoucherService {
             throw new BusinessException(4002, "该券已过期");
         }
 
-        VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
-        if (batch == null) {
-            throw new BusinessException("批次不存在");
+        VoucherBatch batch = null;
+        if (voucher.getBatchId() != null) {
+            batch = batchMapper.selectById(voucher.getBatchId());
         }
-        String voucherType = batch.getVoucherType();
+        String voucherType = batch != null ? batch.getVoucherType() : "RESOURCE_USAGE";
 
-        // Coupon-specific validation
-        if ("COUPON".equals(voucherType)) {
+        // Coupon-specific validation (only when batch exists)
+        if (batch != null && "COUPON".equals(voucherType)) {
             if ("PERCENTAGE".equals(batch.getDiscountType()) && orderAmount == null) {
                 throw new BusinessException(4005, "请输入订单金额");
             }

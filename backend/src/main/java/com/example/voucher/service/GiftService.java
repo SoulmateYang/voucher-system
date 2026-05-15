@@ -1,6 +1,7 @@
 package com.example.voucher.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.example.voucher.common.BusinessException;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherGift;
@@ -62,9 +63,16 @@ public class GiftService {
             throw new BusinessException("不可赠送给自己");
         }
 
-        // 更新卡券状态
-        voucher.setStatus("GIFTING");
-        voucherMapper.updateById(voucher);
+        // 原子更新卡券状态（乐观锁）
+        int updated = voucherMapper.update(null,
+            new LambdaUpdateWrapper<Voucher>()
+                .set(Voucher::getStatus, "GIFTING")
+                .eq(Voucher::getId, voucher.getId())
+                .eq(Voucher::getVersion, voucher.getVersion())
+        );
+        if (updated == 0) {
+            throw new BusinessException("卡券状态已变更，请刷新后重试");
+        }
 
         // 创建赠送记录
         VoucherGift gift = new VoucherGift();
@@ -134,12 +142,19 @@ public class GiftService {
             throw new BusinessException("该赠送已超时");
         }
 
-        // 转移卡券归属
+        // 转移卡券归属（乐观锁）
         Voucher voucher = voucherMapper.selectById(gift.getVoucherId());
-        voucher.setHolderId(gift.getToUserId());
-        voucher.setHolderName(gift.getToUserName());
-        voucher.setStatus("ISSUED");
-        voucherMapper.updateById(voucher);
+        int updated = voucherMapper.update(null,
+            new LambdaUpdateWrapper<Voucher>()
+                .set(Voucher::getHolderId, gift.getToUserId())
+                .set(Voucher::getHolderName, gift.getToUserName())
+                .set(Voucher::getStatus, "ISSUED")
+                .eq(Voucher::getId, voucher.getId())
+                .eq(Voucher::getVersion, voucher.getVersion())
+        );
+        if (updated == 0) {
+            throw new BusinessException("卡券状态已变更，请刷新后重试");
+        }
 
         gift.setStatus("ACCEPTED");
         gift.setHandledAt(LocalDateTime.now());
@@ -233,17 +248,37 @@ public class GiftService {
                     .orderByDesc(VoucherGift::getGiftAt)
                     .last("LIMIT 1")
             );
-            voucher.setHolderId(gift.getFromUserId());
-            voucher.setHolderName(gift.getFromUserName());
-            voucher.setStatus("ISSUED");
-            voucherMapper.updateById(voucher);
+            int updated = voucherMapper.update(null,
+                new LambdaUpdateWrapper<Voucher>()
+                    .set(Voucher::getHolderId, gift.getFromUserId())
+                    .set(Voucher::getHolderName, gift.getFromUserName())
+                    .set(Voucher::getStatus, "ISSUED")
+                    .eq(Voucher::getId, voucher.getId())
+                    .eq(Voucher::getVersion, voucher.getVersion())
+            );
+            if (updated == 0) {
+                // 静默忽略 - 已经被其他操作处理
+                return;
+            }
         }
     }
 
     private List<Map<String, Object>> buildGiftResultList(List<VoucherGift> gifts) {
+        // 批量查询卡券
+        Set<Long> voucherIds = gifts.stream()
+            .map(VoucherGift::getVoucherId)
+            .collect(java.util.stream.Collectors.toSet());
+        Map<Long, Voucher> voucherMap = new HashMap<>();
+        if (!voucherIds.isEmpty()) {
+            List<Voucher> vouchers = voucherMapper.selectBatchIds(voucherIds);
+            for (Voucher v : vouchers) {
+                voucherMap.put(v.getId(), v);
+            }
+        }
+
         List<Map<String, Object>> result = new ArrayList<>();
         for (VoucherGift g : gifts) {
-            Voucher voucher = voucherMapper.selectById(g.getVoucherId());
+            Voucher voucher = voucherMap.get(g.getVoucherId());
             Map<String, Object> item = new HashMap<>();
             item.put("giftId", g.getId());
             item.put("voucherId", g.getVoucherId());
