@@ -40,7 +40,18 @@ request.interceptors.request.use(
 // Response interceptor: handle 401 and errors
 request.interceptors.response.use(
   (response) => {
-    return response.data;
+    const res = response.data;
+    if (res.code === 401) {
+      removeToken();
+      window.location.hash = '#/login';
+      Toast.fail('登录已过期，请重新登录');
+      return Promise.reject(new Error('登录已过期，请重新登录'));
+    }
+    if (res.code !== 0) {
+      Toast.fail(res.message || '请求失败');
+      return Promise.reject(new Error(res.message || '请求失败'));
+    }
+    return res;
   },
   (error) => {
     const { response } = error;

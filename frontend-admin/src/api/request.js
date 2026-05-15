@@ -28,6 +28,13 @@ request.interceptors.request.use(
 request.interceptors.response.use(
   (response) => {
     const res = response.data
+    if (res.code === 401) {
+      localStorage.removeItem('admin_token')
+      localStorage.removeItem('admin_user')
+      router.push('/login')
+      ElMessage.error('登录已过期，请重新登录')
+      return Promise.reject(new Error('登录已过期，请重新登录'))
+    }
     if (res.code !== 0) {
       ElMessage.error(res.message || '请求失败')
       return Promise.reject(new Error(res.message || '请求失败'))

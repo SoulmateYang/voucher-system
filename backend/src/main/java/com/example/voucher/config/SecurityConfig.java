@@ -88,7 +88,7 @@ public class SecurityConfig {
     }
 
     private void writeError(HttpServletResponse res, int code, String msg) throws Exception {
-        res.setStatus(200);
+        res.setStatus(code);
         res.setContentType(MediaType.APPLICATION_JSON_VALUE);
         res.setCharacterEncoding(StandardCharsets.UTF_8.name());
         res.getWriter().write(new ObjectMapper().writeValueAsString(Result.error(code, msg)));
