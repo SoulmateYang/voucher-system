@@ -27,3 +27,33 @@ export function getMyVouchers(params = {}) {
 export function getVoucherDetail(id) {
   return request.get(`/vouchers/my/${id}`);
 }
+
+/** 赠送卡券 */
+export function giftVoucher(data) {
+  return request.post('/vouchers/my/gift', data);
+}
+
+/** 撤销赠送 */
+export function cancelGift(giftId) {
+  return request.post(`/vouchers/my/gift/${giftId}/cancel`);
+}
+
+/** 收件箱 */
+export function getGiftInbox() {
+  return request.get('/vouchers/my/gift/inbox');
+}
+
+/** 发件箱 */
+export function getGiftOutbox() {
+  return request.get('/vouchers/my/gift/outbox');
+}
+
+/** 接收赠送 */
+export function acceptGift(giftId) {
+  return request.post(`/vouchers/my/gift/${giftId}/accept`);
+}
+
+/** 拒绝赠送 */
+export function rejectGift(giftId) {
+  return request.post(`/vouchers/my/gift/${giftId}/reject`);
+}
