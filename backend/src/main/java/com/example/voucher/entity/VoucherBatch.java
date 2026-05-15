@@ -37,6 +37,8 @@ public class VoucherBatch {
 
     private BigDecimal faceValue;
 
+    private Integer transferable;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

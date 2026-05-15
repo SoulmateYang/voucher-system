@@ -41,6 +41,18 @@ public class Voucher {
 
     private String remark;
 
+    private Integer transferable;
+
+    private String source;
+
+    private String imageUrl;
+
+    private Integer isFavorite;
+
+    private Integer isPinned;
+
+    private LocalDateTime pinnedAt;
+
     private BigDecimal faceValue;
 
     private LocalDateTime createdAt;
