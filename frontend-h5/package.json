@@ -9,11 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "vue": "^3.4.0",
-    "vue-router": "^4.2.0",
-    "vant": "^4.0.0",
     "axios": "^1.6.0",
-    "qrcodejs2": "^0.0.2"
+    "qrcode": "^1.5.4",
+    "qrcodejs2": "^0.0.2",
+    "vant": "^4.0.0",
+    "vue": "^3.4.0",
+    "vue-router": "^4.2.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.0",

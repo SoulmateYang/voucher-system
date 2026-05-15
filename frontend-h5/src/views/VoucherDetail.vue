@@ -162,7 +162,7 @@
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Toast, showToast } from 'vant';
-import QRCode from 'qrcodejs2';
+import QRCode from 'qrcode';
 import { getVoucherDetail } from '../api/voucher';
 
 const route = useRoute();
@@ -191,8 +191,6 @@ function onGift() {
   router.push({ name: 'GiftSend', params: { id: voucher.value.id } });
 }
 
-let qrCodeInstance = null;
-
 function statusLabel(status) {
   return STATUS_MAP[status]?.label || status;
 }
@@ -216,22 +214,19 @@ function generateQRCode(voucherCode) {
   const container = document.getElementById('qrCodeContainer');
   if (!container) return;
 
-  // Destroy previous instance
-  if (qrCodeInstance) {
-    qrCodeInstance.clear();
-    container.innerHTML = '';
-  }
+  container.innerHTML = '';
 
-  // QR content: static voucher_code (server handles dedup via optimistic locking)
-  const qrText = voucherCode;
-
-  qrCodeInstance = new QRCode(container, {
-    text: qrText,
+  QRCode.toCanvas(document.createElement('canvas'), voucherCode, {
     width: 200,
-    height: 200,
-    colorDark: '#323233',
-    colorLight: '#ffffff',
-    correctLevel: QRCode.CorrectLevel.M,
+    margin: 1,
+    color: { dark: '#323233', light: '#ffffff' },
+    errorCorrectionLevel: 'M',
+  }).then(canvas => {
+    canvas.style.width = '200px';
+    canvas.style.height = '200px';
+    container.appendChild(canvas);
+  }).catch(e => {
+    console.error('QR生成失败:', e);
   });
 }
 
