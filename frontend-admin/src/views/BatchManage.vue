@@ -152,6 +152,9 @@
             <span class="form-hint">元（0表示无门槛）</span>
           </el-form-item>
         </template>
+        <el-form-item label="可转赠">
+          <el-switch v-model="createForm.transferable" :active-value="1" :inactive-value="0" />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showCreateDialog = false">取消</el-button>
@@ -192,11 +195,19 @@
                 :key="index"
                 class="employee-row"
               >
-                <el-input
+                <el-autocomplete
                   v-model="emp.employeeId"
-                  placeholder="工号"
-                  style="width: 140px"
-                />
+                  :fetch-suggestions="searchEmployees"
+                  :debounce="300"
+                  placeholder="搜索员工（工号/姓名）"
+                  @select="(item) => onEmployeeSelect(item, index)"
+                  style="width: 200px"
+                  clearable
+                >
+                  <template #default="{ item }">
+                    <span>{{ item.value }} | {{ item.employeeName }} | {{ item.department }}</span>
+                  </template>
+                </el-autocomplete>
                 <el-input
                   v-model="emp.employeeName"
                   placeholder="姓名"
@@ -284,6 +295,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getBatchList, createBatch, issueVouchers, getVouchersByBatch } from '../api/batch'
+import { getEmployeeList } from '../api/employee'
 
 // ==================== Batch List ====================
 const batchList = ref([])
@@ -337,6 +349,7 @@ const createForm = reactive({
   discountValue: null,
   minOrderAmount: null,
   faceValue: null,
+  transferable: 1,
 })
 
 const createRules = {
@@ -398,6 +411,7 @@ async function handleCreateBatch() {
       voucherType: createForm.voucherType,
       resourceDesc: createForm.resourceDesc,
       validDays: createForm.validDays,
+      transferable: createForm.transferable,
     }
     if (createForm.voucherType === 'COUPON') {
       payload.discountType = createForm.discountType
@@ -428,6 +442,7 @@ function resetCreateForm() {
   createForm.discountValue = null
   createForm.minOrderAmount = null
   createForm.faceValue = null
+  createForm.transferable = 1
 }
 
 // ==================== Issue Vouchers ====================
@@ -477,6 +492,34 @@ function addEmployee() {
 function removeEmployee(index) {
   if (issueForm.employees.length <= 1) return
   issueForm.employees.splice(index, 1)
+}
+
+let searchTimer = null
+function searchEmployees(queryString, callback) {
+  if (searchTimer) clearTimeout(searchTimer)
+  if (!queryString || queryString.length < 1) {
+    callback([])
+    return
+  }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await getEmployeeList({ keyword: queryString, pageSize: 10 })
+      const list = Array.isArray(res.data) ? res.data : (res.data?.records || [])
+      const results = list.map((emp) => ({
+        value: emp.employeeNo || emp.username,
+        employeeNo: emp.employeeNo || emp.username,
+        employeeName: emp.realName,
+        department: emp.department || '-',
+      }))
+      callback(results)
+    } catch {
+      callback([])
+    }
+  }, 300)
+}
+
+function onEmployeeSelect(item, index) {
+  issueForm.employees[index].employeeName = item.employeeName
 }
 
 async function handleIssueSubmit() {
