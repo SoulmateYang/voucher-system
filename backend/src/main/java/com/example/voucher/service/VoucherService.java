@@ -299,6 +299,9 @@ public class VoucherService {
         result.put("approveRef", voucher.getApproveRef());
         result.put("remark", voucher.getRemark());
         result.put("faceValue", voucher.getFaceValue());
+        result.put("transferable", voucher.getTransferable());
+        result.put("isFavorite", voucher.getIsFavorite());
+        result.put("isPinned", voucher.getIsPinned());
         if (batch != null) {
             result.put("voucherType", batch.getVoucherType());
             result.put("discountType", batch.getDiscountType());
