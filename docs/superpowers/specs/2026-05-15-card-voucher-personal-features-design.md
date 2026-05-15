@@ -81,9 +81,14 @@ CREATE TABLE voucher_gift (
 | POST | `/vouchers/my/gift/{giftId}/reject` | 拒绝赠送 |
 | GET | `/vouchers/my/gift/outbox` | 发出的赠送记录 |
 
-### 定时任务
+### 超时处理（懒校验）
 
-每小时扫描 `voucher_gift` 表中 status=PENDING 且 expire_at < now 的记录，自动标记为 EXPIRED，恢复对应卡券状态。
+不设定时任务。在以下查询节点校验并处理超时赠送：
+
+- **赠送方查询 outbox / 接收方查询 inbox**：遍历结果前，先将当前列表中 status=PENDING 且 expire_at < now 的记录批量更新为 EXPIRED，同步恢复对应卡券状态
+- **接收方执行 accept / 赠送方执行 cancel**：操作前先检查 expire_at，若已超时则直接返回"该赠送已超时"，不执行操作
+
+这样避免引入新的定时任务，状态变更分散在业务查询时自然触发。
 
 ### H5 改动
 
