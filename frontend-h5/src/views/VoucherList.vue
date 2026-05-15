@@ -1,33 +1,42 @@
 <template>
   <div class="voucher-list-page">
-    <!-- Navbar -->
     <van-nav-bar title="我的卡券" fixed placeholder>
       <template #right>
         <van-icon name="envelop-o" size="20" @click="goToInbox" />
       </template>
     </van-nav-bar>
 
-    <!-- Pull-to-refresh content -->
+    <!-- Search and filter bar -->
+    <div class="search-bar">
+      <van-search
+        v-model="keyword"
+        placeholder="搜索卡券"
+        shape="round"
+        @search="onSearch"
+      />
+      <div class="filter-row">
+        <van-dropdown-menu>
+          <van-dropdown-item v-model="statusFilter" :options="statusOptions" @change="onFilterChange" />
+          <van-dropdown-item v-model="typeFilter" :options="typeOptions" @change="onFilterChange" />
+        </van-dropdown-menu>
+      </div>
+    </div>
+
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
-      <!-- Loading skeleton -->
       <template v-if="loading && vouchers.length === 0">
         <div class="skeleton-list">
           <van-skeleton title round row="4" v-for="n in 4" :key="n" class="skeleton-item" />
         </div>
       </template>
 
-      <!-- Error state -->
       <template v-else-if="error && vouchers.length === 0">
         <div class="error-state">
           <van-icon name="warn-o" size="48" color="#c8c9cc" />
           <p class="error-text">加载失败</p>
-          <van-button type="primary" size="small" @click="fetchVouchers" class="retry-btn">
-            重新加载
-          </van-button>
+          <van-button type="primary" size="small" @click="fetchVouchers" class="retry-btn">重新加载</van-button>
         </div>
       </template>
 
-      <!-- Empty state -->
       <template v-else-if="!loading && vouchers.length === 0">
         <div class="empty-state">
           <van-icon name="coupon-o" size="64" color="#c8c9cc" />
@@ -36,7 +45,6 @@
         </div>
       </template>
 
-      <!-- Voucher list -->
       <template v-else>
         <van-list
           v-model:loading="listLoading"
@@ -49,7 +57,7 @@
               v-for="item in vouchers"
               :key="item.id"
               class="voucher-card card"
-              :class="{ 'is-coupon': item.voucherType === 'COUPON' }"
+              :class="{ 'is-coupon': item.voucherType === 'COUPON', 'is-pinned': item.isPinned }"
               @click="goToDetail(item.id)"
             >
               <div class="voucher-card-header">
@@ -58,13 +66,12 @@
                     <span class="coupon-symbol">¥</span>
                     <span class="coupon-amount">{{ item.faceValue }}</span>
                   </div>
-                  <span class="voucher-card-title">{{ item.remark || '卡券' }}</span>
+                  <span class="voucher-card-title">
+                    <van-icon v-if="item.isPinned" name="star" size="14" color="#fa8c16" class="pin-icon" />
+                    {{ item.remark || '卡券' }}
+                  </span>
                 </div>
-                <van-tag
-                  :class="statusTagClass(item.status)"
-                  :type="item.voucherType === 'COUPON' ? 'warning' : ''"
-                  size="small"
-                >
+                <van-tag :class="statusTagClass(item.status)" size="small">
                   {{ statusLabel(item.status) }}
                 </van-tag>
               </div>
@@ -72,22 +79,29 @@
                 <span class="meta-label">有效期至</span>
                 <span class="meta-value">{{ formatDate(item.expireAt) }}</span>
               </div>
+              <div class="voucher-card-footer">
+                <van-icon
+                  :name="item.isFavorite ? 'like' : 'like-o'"
+                  :color="item.isFavorite ? '#ee0a24' : '#c8c9cc'"
+                  size="18"
+                  @click.stop="onToggleFavorite(item)"
+                />
+                <van-icon
+                  :name="item.isPinned ? 'star' : 'star-o'"
+                  :color="item.isPinned ? '#fa8c16' : '#c8c9cc'"
+                  size="18"
+                  @click.stop="onTogglePin(item)"
+                />
+              </div>
             </div>
           </div>
         </van-list>
       </template>
     </van-pull-refresh>
 
-      <!-- Float action buttons -->
-      <div class="float-actions">
-        <van-button
-          icon="add-o"
-          type="primary"
-          round
-          class="float-btn"
-          @click="goToManualAdd"
-        />
-      </div>
+    <div class="float-actions">
+      <van-button icon="add-o" type="primary" round class="float-btn" @click="goToManualAdd" />
+    </div>
   </div>
 </template>
 
@@ -95,7 +109,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { Toast } from 'vant';
-import { getMyVouchers } from '../api/voucher';
+import { getMyVouchers, toggleFavorite, togglePin } from '../api/voucher';
 
 const router = useRouter();
 
@@ -106,10 +120,25 @@ const refreshing = ref(false);
 const listLoading = ref(false);
 const listFinished = ref(false);
 
-const queryParams = ref({
-  page: 1,
-  size: 20,
-});
+const keyword = ref('');
+const statusFilter = ref('');
+const typeFilter = ref('');
+
+const queryParams = ref({ page: 1, size: 20 });
+
+const statusOptions = [
+  { text: '全部状态', value: '' },
+  { text: '有效', value: 'ISSUED' },
+  { text: '已使用', value: 'USED' },
+  { text: '已过期', value: 'EXPIRED' },
+  { text: '已作废', value: 'CANCELLED' },
+];
+
+const typeOptions = [
+  { text: '全部类型', value: '' },
+  { text: '资源使用', value: 'RESOURCE_USAGE' },
+  { text: '优惠券', value: 'COUPON' },
+];
 
 const STATUS_MAP = {
   ISSUED: { label: '有效', class: 'tag-valid' },
@@ -118,13 +147,8 @@ const STATUS_MAP = {
   CANCELLED: { label: '已作废', class: 'tag-revoked' },
 };
 
-function statusLabel(status) {
-  return STATUS_MAP[status]?.label || status;
-}
-
-function statusTagClass(status) {
-  return STATUS_MAP[status]?.class || '';
-}
+function statusLabel(s) { return STATUS_MAP[s]?.label || s; }
+function statusTagClass(s) { return STATUS_MAP[s]?.class || ''; }
 
 function formatDate(dateStr) {
   if (!dateStr) return '--';
@@ -146,10 +170,15 @@ async function fetchVouchers(reset = false) {
   error.value = false;
 
   try {
-    const res = await getMyVouchers({
+    const params = {
       page: queryParams.value.page,
       size: queryParams.value.size,
-    });
+    };
+    if (keyword.value) params.keyword = keyword.value;
+    if (statusFilter.value) params.status = statusFilter.value;
+    if (typeFilter.value) params.voucherType = typeFilter.value;
+
+    const res = await getMyVouchers(params);
     const records = res?.data?.records || res?.data || [];
     const total = res?.data?.total || records.length;
 
@@ -164,9 +193,6 @@ async function fetchVouchers(reset = false) {
     }
   } catch (err) {
     error.value = true;
-    if (!err.response) {
-      Toast.fail('网络异常，请稍后重试');
-    }
   } finally {
     loading.value = false;
     listLoading.value = false;
@@ -174,9 +200,9 @@ async function fetchVouchers(reset = false) {
   }
 }
 
-function onRefresh() {
-  fetchVouchers(true);
-}
+function onSearch() { fetchVouchers(true); }
+function onFilterChange() { fetchVouchers(true); }
+function onRefresh() { fetchVouchers(true); }
 
 function onLoadMore() {
   queryParams.value.page += 1;
@@ -184,31 +210,41 @@ function onLoadMore() {
   fetchVouchers(false);
 }
 
-function goToDetail(id) {
-  router.push({ name: 'VoucherDetail', params: { id } });
-}
-function goToInbox() {
-  router.push({ name: 'GiftInbox' });
-}
-function goToManualAdd() {
-  router.push({ name: 'ManualAdd' });
+async function onToggleFavorite(item) {
+  try {
+    await toggleFavorite(item.id);
+    item.isFavorite = item.isFavorite ? 0 : 1;
+    Toast.success(item.isFavorite ? '已收藏' : '已取消收藏');
+  } catch { /* handled */ }
 }
 
-onMounted(() => {
-  fetchVouchers(true);
-});
+async function onTogglePin(item) {
+  try {
+    await togglePin(item.id);
+    item.isPinned = item.isPinned ? 0 : 1;
+    Toast.success(item.isPinned ? '已置顶' : '已取消置顶');
+  } catch { /* handled */ }
+}
+
+function goToDetail(id) { router.push({ name: 'VoucherDetail', params: { id } }); }
+function goToInbox() { router.push({ name: 'GiftInbox' }); }
+function goToManualAdd() { router.push({ name: 'ManualAdd' }); }
+
+onMounted(() => { fetchVouchers(true); });
 </script>
 
 <style scoped>
-.voucher-list-page {
-  min-height: 100vh;
-  background: var(--color-bg);
+.voucher-list-page { min-height: 100vh; background: var(--color-bg); }
+
+.search-bar {
+  background: var(--color-card);
+  padding-bottom: var(--spacing-xs);
+  border-bottom: 1px solid var(--color-border-light);
 }
 
-.skeleton-list {
-  padding: var(--spacing-md);
-}
+.filter-row { padding: 0 var(--spacing-md); }
 
+.skeleton-list { padding: var(--spacing-md); }
 .skeleton-item {
   margin-bottom: var(--spacing-sm);
   padding: var(--spacing-md);
@@ -216,8 +252,7 @@ onMounted(() => {
   border-radius: var(--radius-md);
 }
 
-.error-state,
-.empty-state {
+.error-state, .empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -225,32 +260,12 @@ onMounted(() => {
   padding: 80px var(--spacing-md);
 }
 
-.empty-title {
-  margin-top: var(--spacing-md);
-  font-size: var(--font-size-card-title);
-  color: var(--color-text-primary);
-}
+.empty-title { margin-top: var(--spacing-md); font-size: var(--font-size-card-title); color: var(--color-text-primary); }
+.empty-desc { margin-top: var(--spacing-xs); font-size: var(--font-size-small); color: var(--color-text-secondary); }
+.error-text { margin-top: var(--spacing-md); font-size: var(--font-size-body); color: var(--color-text-secondary); }
+.retry-btn { margin-top: var(--spacing-md); min-width: 120px; }
 
-.empty-desc {
-  margin-top: var(--spacing-xs);
-  font-size: var(--font-size-small);
-  color: var(--color-text-secondary);
-}
-
-.error-text {
-  margin-top: var(--spacing-md);
-  font-size: var(--font-size-body);
-  color: var(--color-text-secondary);
-}
-
-.retry-btn {
-  margin-top: var(--spacing-md);
-  min-width: 120px;
-}
-
-.voucher-cards {
-  padding: var(--spacing-sm) var(--spacing-md);
-}
+.voucher-cards { padding: var(--spacing-sm) var(--spacing-md); }
 
 .voucher-card {
   margin-bottom: var(--spacing-sm);
@@ -258,8 +273,15 @@ onMounted(() => {
   transition: box-shadow 0.2s ease;
 }
 
-.voucher-card:active {
-  box-shadow: var(--shadow-md);
+.voucher-card:active { box-shadow: var(--shadow-md); }
+
+.voucher-card.is-pinned {
+  border-color: #ffd666;
+}
+
+.pin-icon {
+  margin-right: 4px;
+  vertical-align: middle;
 }
 
 .voucher-card-header {
@@ -269,36 +291,13 @@ onMounted(() => {
   margin-bottom: var(--spacing-sm);
 }
 
-.voucher-card-left {
-  flex: 1;
-  min-width: 0;
-}
+.voucher-card-left { flex: 1; min-width: 0; }
 
-.coupon-value {
-  display: flex;
-  align-items: baseline;
-  margin-bottom: 4px;
-}
+.coupon-value { display: flex; align-items: baseline; margin-bottom: 4px; }
+.coupon-symbol { font-size: 14px; font-weight: 700; color: #ee0a24; margin-right: 2px; }
+.coupon-amount { font-size: 24px; font-weight: 700; color: #ee0a24; font-family: 'JetBrains Mono', 'SF Mono', monospace; line-height: 1; }
 
-.coupon-symbol {
-  font-size: 14px;
-  font-weight: 700;
-  color: #ee0a24;
-  margin-right: 2px;
-}
-
-.coupon-amount {
-  font-size: 24px;
-  font-weight: 700;
-  color: #ee0a24;
-  font-family: 'JetBrains Mono', 'SF Mono', monospace;
-  line-height: 1;
-}
-
-.voucher-card.is-coupon {
-  background: #fff7e6;
-  border-color: #ffd666;
-}
+.voucher-card.is-coupon { background: #fff7e6; border-color: #ffd666; }
 
 .voucher-card-title {
   font-size: var(--font-size-card-title);
@@ -313,15 +312,17 @@ onMounted(() => {
   display: flex;
   align-items: center;
   font-size: var(--font-size-small);
+  margin-bottom: var(--spacing-xs);
 }
 
-.meta-label {
-  color: var(--color-text-secondary);
-  margin-right: var(--spacing-xs);
-}
+.meta-label { color: var(--color-text-secondary); margin-right: var(--spacing-xs); }
+.meta-value { color: var(--color-text-primary); }
 
-.meta-value {
-  color: var(--color-text-primary);
+.voucher-card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--spacing-md);
+  padding-top: var(--spacing-xs);
 }
 
 .float-actions {

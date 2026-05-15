@@ -57,3 +57,18 @@ export function acceptGift(giftId) {
 export function rejectGift(giftId) {
   return request.post(`/vouchers/my/gift/${giftId}/reject`);
 }
+
+/** 切换收藏 */
+export function toggleFavorite(id) {
+  return request.post(`/vouchers/my/${id}/favorite`);
+}
+
+/** 切换置顶 */
+export function togglePin(id) {
+  return request.post(`/vouchers/my/${id}/pin`);
+}
+
+/** 手动录入卡券 */
+export function addManualVoucher(data) {
+  return request.post('/vouchers/my/manual', data);
+}
