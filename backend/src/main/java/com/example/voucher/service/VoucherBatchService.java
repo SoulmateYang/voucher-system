@@ -45,6 +45,9 @@ public class VoucherBatchService {
         batch.setDiscountValue(request.getDiscountValue());
         batch.setMinOrderAmount(request.getMinOrderAmount());
         batch.setFaceValue(request.getFaceValue());
+        if (request.getTransferable() != null) {
+            batch.setTransferable(request.getTransferable());
+        }
         batchMapper.insert(batch);
         return batch;
     }

@@ -33,4 +33,6 @@ public class CreateBatchRequest {
 
     @DecimalMin(value = "0.01", message = "面额上限必须大于0")
     private BigDecimal faceValue;
+
+    private Integer transferable;
 }

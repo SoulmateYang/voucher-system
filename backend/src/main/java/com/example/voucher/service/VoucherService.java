@@ -248,6 +248,7 @@ public class VoucherService {
         voucher.setHolderName(employeeName);
         voucher.setStatus("ISSUED");
         voucher.setVersion(0);
+        voucher.setTransferable(batch.getTransferable());
         voucher.setIssuedAt(LocalDateTime.now());
         voucher.setExpireAt(LocalDate.now().plusDays(batch.getValidDays()).atTime(LocalTime.MAX));
 
