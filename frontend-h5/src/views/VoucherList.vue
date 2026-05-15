@@ -1,7 +1,11 @@
 <template>
   <div class="voucher-list-page">
     <!-- Navbar -->
-    <van-nav-bar title="我的卡券" fixed placeholder />
+    <van-nav-bar title="我的卡券" fixed placeholder>
+      <template #right>
+        <van-icon name="envelop-o" size="20" @click="goToInbox" />
+      </template>
+    </van-nav-bar>
 
     <!-- Pull-to-refresh content -->
     <van-pull-refresh v-model="refreshing" @refresh="onRefresh">
@@ -73,6 +77,17 @@
         </van-list>
       </template>
     </van-pull-refresh>
+
+      <!-- Float action buttons -->
+      <div class="float-actions">
+        <van-button
+          icon="add-o"
+          type="primary"
+          round
+          class="float-btn"
+          @click="goToManualAdd"
+        />
+      </div>
   </div>
 </template>
 
@@ -171,6 +186,12 @@ function onLoadMore() {
 
 function goToDetail(id) {
   router.push({ name: 'VoucherDetail', params: { id } });
+}
+function goToInbox() {
+  router.push({ name: 'GiftInbox' });
+}
+function goToManualAdd() {
+  router.push({ name: 'ManualAdd' });
 }
 
 onMounted(() => {
@@ -301,5 +322,19 @@ onMounted(() => {
 
 .meta-value {
   color: var(--color-text-primary);
+}
+
+.float-actions {
+  position: fixed;
+  right: 16px;
+  bottom: 80px;
+  z-index: 10;
+}
+
+.float-btn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  box-shadow: var(--shadow-lg);
 }
 </style>
