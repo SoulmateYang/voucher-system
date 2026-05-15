@@ -24,6 +24,30 @@ const routes = [
     component: () => import('../views/VoucherDetail.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/gift-send/:id',
+    name: 'GiftSend',
+    component: () => import('../views/GiftSend.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/gift-inbox',
+    name: 'GiftInbox',
+    component: () => import('../views/GiftInbox.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/gift-outbox',
+    name: 'GiftOutbox',
+    component: () => import('../views/GiftInbox.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/manual-add',
+    name: 'ManualAdd',
+    component: () => import('../views/ManualAdd.vue'),
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({
