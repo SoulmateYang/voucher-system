@@ -34,7 +34,11 @@
         empty-text="暂无员工数据"
         style="width: 100%"
       >
-        <el-table-column prop="employeeNo" label="工号" width="120" />
+        <el-table-column label="工号" width="120">
+          <template #default="{ row }">
+            {{ row.employeeNo || row.username || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="realName" label="姓名" width="120" />
         <el-table-column prop="mobile" label="手机号" width="140">
           <template #default="{ row }">

@@ -2,28 +2,45 @@
   "hooks": {
     "PreToolUse": [
       {
-        "type": "command",
         "matcher": "Edit|Write",
-        "command": "FILE=$(cat | jq -r '.tool_input.file_path // empty') && echo \"$FILE\" | grep -qE '\\.(env|pem|key)$|secrets' && { echo '禁止修改敏感文件' >&2; exit 2; } || exit 0"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(cat | jq -r '.tool_input.file_path // empty') && echo \"$FILE\" | grep -qE '\\.(env|pem|key)$|secrets' && { echo '禁止修改敏感文件' >&2; exit 2; } || exit 0"
+          }
+        ]
       },
       {
-        "type": "command",
         "matcher": "Bash",
-        "command": "CMD=$(cat | jq -r '.tool_input.command // empty') && echo \"$CMD\" | grep -qE 'rm\\s+-rf|sudo|chmod\\s+777' && { echo '危险命令已被阻止' >&2; exit 2; } || exit 0"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CMD=$(cat | jq -r '.tool_input.command // empty') && echo \"$CMD\" | grep -qE 'rm\\s+-rf|sudo|chmod\\s+777' && { echo '危险命令已被阻止' >&2; exit 2; } || exit 0"
+          }
+        ]
       }
     ],
     "PostToolUse": [
       {
-        "type": "command",
         "matcher": "Edit|Write",
-        "command": "FILE=$(cat | jq -r '.tool_input.file_path // empty') && [ -n \"$FILE\" ] && npx prettier --write \"$FILE\" 2>/dev/null && git add \"$FILE\" 2>/dev/null || true"
+        "hooks": [
+          {
+            "type": "command",
+            "command": "FILE=$(cat | jq -r '.tool_input.file_path // empty') && [ -n \"$FILE\" ] && npx prettier --write \"$FILE\" 2>/dev/null && git add \"$FILE\" 2>/dev/null || true"
+          }
+        ]
       }
     ],
     "Stop": [
       {
-        "type": "command",
-        "command": "CHANGED=$(git diff --name-only HEAD 2>/dev/null | grep -cE '\\.(ts|js|py)$') && [ \"$CHANGED\" -gt 0 ] && npm test 2>&1 | tail -20 || true",
-        "timeout": 60000
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "CHANGED=$(git diff --name-only HEAD 2>/dev/null | grep -cE '\\.(ts|js|py)$') && [ \"$CHANGED\" -gt 0 ] && npm test 2>&1 | tail -20 || true",
+            "timeout": 60000
+          }
+        ]
       }
     ]
   }

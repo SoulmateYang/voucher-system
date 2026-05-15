@@ -42,4 +42,14 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
             "WHERE verified_at BETWEEN #{start} AND #{end} " +
             "GROUP BY DATE(verified_at) ORDER BY dt")
     List<Map<String, Object>> dailyVerifyCount(LocalDateTime start, LocalDateTime end);
+
+    @Select("SELECT DATE(expire_at) as dt, COUNT(*) as cnt FROM voucher " +
+            "WHERE expire_at BETWEEN #{start} AND #{end} " +
+            "GROUP BY DATE(expire_at) ORDER BY dt")
+    List<Map<String, Object>> dailyExpiredCount(LocalDateTime start, LocalDateTime end);
+
+    @Select("SELECT DATE(cancelled_at) as dt, COUNT(*) as cnt FROM voucher " +
+            "WHERE cancelled_at BETWEEN #{start} AND #{end} " +
+            "GROUP BY DATE(cancelled_at) ORDER BY dt")
+    List<Map<String, Object>> dailyCancelledCount(LocalDateTime start, LocalDateTime end);
 }

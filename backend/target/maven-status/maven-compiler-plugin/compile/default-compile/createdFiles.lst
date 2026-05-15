@@ -1,4 +1,12 @@
 com\example\voucher\controller\EmployeeController.class
-com\example\voucher\service\EmployeeService.class
+com\example\voucher\dto\GiftVoucherRequest.class
+com\example\voucher\entity\VoucherGift.class
 com\example\voucher\dto\UpdateEmployeeRequest.class
 com\example\voucher\dto\CreateEmployeeRequest.class
+com\example\voucher\controller\GiftController.class
+com\example\voucher\service\EmployeeService.class
+com\example\voucher\controller\ReportsController.class
+com\example\voucher\mapper\VoucherGiftMapper.class
+com\example\voucher\dto\ManualVoucherRequest.class
+com\example\voucher\service\GiftService.class
+com\example\voucher\config\JacksonConfig.class
