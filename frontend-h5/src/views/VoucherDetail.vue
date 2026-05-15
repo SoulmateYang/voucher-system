@@ -41,6 +41,10 @@
     <!-- Voucher detail -->
     <template v-else-if="voucher">
       <div class="detail-content">
+          <div v-if="voucher.isOffline" class="offline-banner">
+            <van-icon name="warn-o" size="16" />
+            <span>离线模式 — 显示缓存数据</span>
+          </div>
         <!-- Status + resource name -->
         <div class="voucher-header card" :class="{ 'is-coupon': voucher.voucherType === 'COUPON' }">
           <!-- Coupon face value display -->
@@ -261,10 +265,43 @@ async function fetchDetail() {
     }
     voucher.value = data;
 
+    // 缓存到 localStorage 用于离线查看
+    try {
+      const cache = {
+        voucherCode: data.voucherCode,
+        remark: data.remark,
+        voucherType: data.voucherType,
+        faceValue: data.faceValue,
+        status: data.status,
+        expireAt: data.expireAt,
+        cachedAt: new Date().toISOString(),
+      };
+      localStorage.setItem(`voucher_cache_${id}`, JSON.stringify(cache));
+    } catch { /* ignore quota errors */ }
+
     // Generate QR code after DOM update
     await nextTick();
     generateQRCode(data.voucherCode);
   } catch (err) {
+    // 尝试从缓存读取
+    try {
+      const cached = localStorage.getItem(`voucher_cache_${id}`);
+      if (cached) {
+        const data = JSON.parse(cached);
+        voucher.value = {
+          ...data,
+          voucherCode: data.voucherCode,
+          remark: data.remark + '（离线）',
+          voucherType: data.voucherType,
+          faceValue: data.faceValue,
+          status: data.status,
+          expireAt: data.expireAt,
+          isOffline: true,
+        };
+        loading.value = false;
+      }
+    } catch { /* ignore */ }
+
     error.value = true;
     if (err?.response?.status === 404) {
       notFound.value = true;
@@ -480,5 +517,17 @@ onMounted(() => {
 .gift-section {
   margin-bottom: var(--spacing-sm);
   padding: var(--spacing-md);
+}
+
+.offline-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm) var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
+  background: #fff7e6;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-small);
+  color: #fa8c16;
 }
 </style>
