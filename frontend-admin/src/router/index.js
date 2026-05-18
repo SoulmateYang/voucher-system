@@ -36,6 +36,12 @@ const routes = [
         meta: { title: '统计报表' },
       },
       {
+        path: 'employee-vouchers',
+        name: 'EmployeeVouchers',
+        component: () => import('../views/EmployeeVouchers.vue'),
+        meta: { title: '员工卡券' },
+      },
+      {
         path: 'employees',
         name: 'EmployeeManage',
         component: () => import('../views/EmployeeManage.vue'),

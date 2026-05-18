@@ -23,3 +23,7 @@ export function getReports(params) {
 export function getDailyTrend(params) {
   return request.get('/reports/daily-trend', { params })
 }
+
+export function getVoucherList(params) {
+  return request.get('/vouchers', { params })
+}

@@ -10,7 +10,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.Map;
 
 @RestController
@@ -72,5 +74,21 @@ public class VoucherController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
             HttpServletResponse response) throws IOException {
         reportService.exportExcel(response, start, end);
+    }
+
+    @GetMapping
+    public Result<Object> list(
+            @RequestParam(required = false) String holderId,
+            @RequestParam(required = false) String holderName,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String voucherType,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate expireStart,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate expireEnd,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize) {
+        LocalDateTime startDateTime = expireStart != null ? expireStart.atStartOfDay() : null;
+        LocalDateTime endDateTime = expireEnd != null ? expireEnd.atTime(LocalTime.MAX) : null;
+        return Result.success(voucherService.listAllPaged(page, pageSize,
+            holderId, holderName, keyword, voucherType, startDateTime, endDateTime));
     }
 }

@@ -2,9 +2,13 @@ package com.example.voucher.mapper;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.example.voucher.dto.VoucherListRow;
 import com.example.voucher.entity.Voucher;
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
@@ -52,4 +56,29 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
             "WHERE cancelled_at BETWEEN #{start} AND #{end} " +
             "GROUP BY DATE(cancelled_at) ORDER BY dt")
     List<Map<String, Object>> dailyCancelledCount(LocalDateTime start, LocalDateTime end);
+
+    @Select("<script>" +
+        "SELECT v.id, v.batch_id, v.voucher_code, v.holder_id, v.holder_name, " +
+        "       v.status, v.issued_at, v.expire_at, v.used_at, v.approve_ref, " +
+        "       v.remark, v.face_value, v.created_at, " +
+        "       b.batch_name, b.voucher_type " +
+        "FROM voucher v " +
+        "LEFT JOIN voucher_batch b ON v.batch_id = b.id " +
+        "<where>" +
+        "  <if test='holderId != null and holderId != \"\"'>AND v.holder_id LIKE CONCAT('%', #{holderId}, '%')</if>" +
+        "  <if test='holderName != null and holderName != \"\"'>AND v.holder_name LIKE CONCAT('%', #{holderName}, '%')</if>" +
+        "  <if test='keyword != null and keyword != \"\"'>AND (v.voucher_code LIKE CONCAT('%', #{keyword}, '%') OR v.remark LIKE CONCAT('%', #{keyword}, '%'))</if>" +
+        "  <if test='voucherType != null and voucherType != \"\"'>AND b.voucher_type = #{voucherType}</if>" +
+        "  <if test='expireStart != null'>AND v.expire_at &gt;= #{expireStart}</if>" +
+        "  <if test='expireEnd != null'>AND v.expire_at &lt;= #{expireEnd}</if>" +
+        "</where>" +
+        "ORDER BY v.created_at DESC" +
+        "</script>")
+    IPage<VoucherListRow> selectPagedWithBatch(Page<VoucherListRow> page,
+                                                @Param("holderId") String holderId,
+                                                @Param("holderName") String holderName,
+                                                @Param("keyword") String keyword,
+                                                @Param("voucherType") String voucherType,
+                                                @Param("expireStart") LocalDateTime expireStart,
+                                                @Param("expireEnd") LocalDateTime expireEnd);
 }

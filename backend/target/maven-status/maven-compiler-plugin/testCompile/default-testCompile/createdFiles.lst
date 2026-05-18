@@ -1,0 +1,10 @@
+com\example\voucher\common\VoucherTypeTest.class
+com\example\voucher\service\VoucherBatchServiceTest.class
+com\example\voucher\service\EmployeeServiceTest.class
+com\example\voucher\service\VoucherServiceTest.class
+com\example\voucher\common\ResultTest.class
+com\example\voucher\common\GlobalExceptionHandlerTest.class
+com\example\voucher\service\ReportServiceTest.class
+com\example\voucher\common\VoucherCodeUtilTest.class
+com\example\voucher\common\BusinessExceptionTest.class
+com\example\voucher\service\AuthServiceTest.class

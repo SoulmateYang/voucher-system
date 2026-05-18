@@ -29,6 +29,10 @@
           <el-icon><DataAnalysis /></el-icon>
           <template #title>统计报表</template>
         </el-menu-item>
+        <el-menu-item index="/employee-vouchers">
+          <el-icon><Collection /></el-icon>
+          <template #title>员工卡券</template>
+        </el-menu-item>
         <el-menu-item index="/employees">
           <el-icon><User /></el-icon>
           <template #title>员工管理</template>
@@ -93,6 +97,7 @@ import {
   Wallet,
   Select,
   DataAnalysis,
+  Collection,
   Setting,
   UserFilled,
   User,
@@ -112,6 +117,7 @@ const activeMenu = computed(() => {
   if (path.startsWith('/batch')) return '/batch'
   if (path.startsWith('/verify')) return '/verify'
   if (path.startsWith('/reports')) return '/reports'
+  if (path.startsWith('/employee-vouchers')) return '/employee-vouchers'
   if (path.startsWith('/employees')) return '/employees'
   return '/batch'
 })

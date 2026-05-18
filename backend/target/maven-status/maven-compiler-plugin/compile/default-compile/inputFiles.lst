@@ -6,6 +6,7 @@ D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\vouche
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\controller\EmployeeController.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\VoucherBatch.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\mapper\VerificationLogMapper.java
+D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\VoucherListRow.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\SysUser.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\common\Result.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\CreateEmployeeRequest.java

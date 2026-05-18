@@ -2,9 +2,12 @@ package com.example.voucher.service;
 
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.voucher.common.BusinessException;
 import com.example.voucher.common.VoucherCodeUtil;
 import com.example.voucher.dto.IssueVoucherRequest;
+import com.example.voucher.dto.VoucherListRow;
 import com.example.voucher.entity.AuditLog;
 import com.example.voucher.entity.VerificationLog;
 import com.example.voucher.entity.Voucher;
@@ -487,5 +490,19 @@ public class VoucherService {
         result.put("id", voucher.getId());
         result.put("voucherCode", voucher.getVoucherCode());
         return result;
+    }
+
+    public IPage<VoucherListRow> listAllPaged(int page, int size,
+                                               String holderId, String holderName,
+                                               String keyword, String voucherType,
+                                               LocalDateTime expireStart, LocalDateTime expireEnd) {
+        Page<VoucherListRow> p = new Page<>(page, size);
+        // Set expireEnd to end of day if provided
+        LocalDateTime expireEndAdjusted = expireEnd;
+        if (expireEnd != null) {
+            expireEndAdjusted = expireEnd.withHour(23).withMinute(59).withSecond(59);
+        }
+        return voucherMapper.selectPagedWithBatch(p, holderId, holderName, keyword,
+            voucherType, expireStart, expireEndAdjusted);
     }
 }

@@ -1,5 +1,6 @@
 com\example\voucher\controller\EmployeeController.class
 com\example\voucher\dto\GiftVoucherRequest.class
+com\example\voucher\dto\VoucherListRow.class
 com\example\voucher\entity\VoucherGift.class
 com\example\voucher\dto\UpdateEmployeeRequest.class
 com\example\voucher\dto\CreateEmployeeRequest.class
