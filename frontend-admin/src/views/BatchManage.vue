@@ -254,14 +254,14 @@
     <el-dialog
       v-model="showVoucherDialog"
       :title="`券码列表 - ${currentBatch?.batchName || ''}`"
-      width="520px"
+      width="700px"
       destroy-on-close
     >
       <el-table
         :data="voucherList"
         stripe
         size="small"
-        max-height="400"
+        max-height="500"
         empty-text="暂无券码数据"
       >
         <el-table-column prop="voucherCode" label="券码" min-width="180">
@@ -273,6 +273,29 @@
         <el-table-column v-if="currentBatch?.voucherType === 'COUPON'" label="面额" width="100" align="right">
           <template #default="{ row }">
             <span class="mono">¥{{ row.faceValue || 0 }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="有效期" width="110" align="center">
+          <template #default="{ row }">
+            {{ formatDate(row.expireAt) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="二维码" width="80" align="center">
+          <template #default="{ row }">
+            <template v-if="row.status === 'ISSUED' && row._qrDataUrl">
+              <el-popover placement="left" trigger="hover" :width="220" :z-index="2100">
+                <template #reference>
+                  <img :src="row._qrDataUrl" class="qr-thumb" />
+                </template>
+                <div class="qr-preview">
+                  <img :src="row._qrDataUrl" class="qr-large" />
+                  <p class="qr-preview-code">{{ row.voucherCode }}</p>
+                </div>
+              </el-popover>
+            </template>
+            <template v-else>
+              <span class="text-muted">—</span>
+            </template>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="80" align="center">
@@ -296,6 +319,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getBatchList, createBatch, issueVouchers, getVouchersByBatch } from '../api/batch'
 import { getEmployeeList } from '../api/employee'
+import QRCode from 'qrcode'
 
 // ==================== Batch List ====================
 const batchList = ref([])
@@ -568,6 +592,26 @@ async function handleIssueSubmit() {
 const showVoucherDialog = ref(false)
 const voucherList = ref([])
 
+function formatDate(dateStr) {
+  if (!dateStr) return '—'
+  return dateStr.substring(0, 10)
+}
+
+async function generateQRDataUrl(voucherCode) {
+  try {
+    const svg = await QRCode.toString(voucherCode, {
+      type: 'svg',
+      width: 200,
+      margin: 1,
+      errorCorrectionLevel: 'M',
+      color: { dark: '#323233', light: '#ffffff' },
+    })
+    return 'data:image/svg+xml;base64,' + btoa(svg)
+  } catch {
+    return ''
+  }
+}
+
 async function handleViewDetail(batch) {
   currentBatch.value = batch
   showVoucherDialog.value = true
@@ -575,6 +619,12 @@ async function handleViewDetail(batch) {
     const res = await getVouchersByBatch(batch.id, { page: 1, pageSize: 50 })
     const list = Array.isArray(res.data) ? res.data : (res.data?.list || [])
     voucherList.value = list
+    // Pre-generate QR codes for ISSUED vouchers
+    for (const voucher of voucherList.value) {
+      if (voucher.status === 'ISSUED') {
+        voucher._qrDataUrl = await generateQRDataUrl(voucher.voucherCode)
+      }
+    }
   } catch {
     voucherList.value = []
   }
@@ -678,5 +728,37 @@ onMounted(() => {
 .status-cancelled {
   background-color: #fef0f0;
   color: #ee0a24;
+}
+
+/* QR code in voucher table */
+.qr-thumb {
+  width: 36px;
+  height: 36px;
+  cursor: pointer;
+  display: block;
+  margin: 0 auto;
+}
+
+.qr-preview {
+  text-align: center;
+}
+
+.qr-large {
+  width: 200px;
+  height: 200px;
+  display: block;
+  margin: 0 auto;
+}
+
+.qr-preview-code {
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', 'SF Mono', Consolas, monospace;
+  font-size: 11px;
+  color: #969799;
+  word-break: break-all;
+}
+
+.text-muted {
+  color: #c8c9cc;
 }
 </style>

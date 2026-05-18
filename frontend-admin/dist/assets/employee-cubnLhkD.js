@@ -1,1 +1,0 @@
-import{r as t}from"./request-CuhjdMaS.js";function s(e){return t.get("/employees",{params:e})}function p(e){return t.post("/employees",e)}function n(e,o){return t.put(`/employees/${e}`,o)}function u(e){return t.delete(`/employees/${e}`)}function l(e){return t.post(`/employees/${e}/reset-password`)}export{p as c,u as d,s as g,l as r,n as u};

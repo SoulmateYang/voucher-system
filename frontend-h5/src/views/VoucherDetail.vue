@@ -214,17 +214,19 @@ function generateQRCode(voucherCode) {
   const container = document.getElementById('qrCodeContainer');
   if (!container) return;
 
-  container.innerHTML = '';
-
-  QRCode.toCanvas(document.createElement('canvas'), voucherCode, {
+  QRCode.toString(voucherCode, {
+    type: 'svg',
     width: 200,
     margin: 1,
     color: { dark: '#323233', light: '#ffffff' },
     errorCorrectionLevel: 'M',
-  }).then(canvas => {
-    canvas.style.width = '200px';
-    canvas.style.height = '200px';
-    container.appendChild(canvas);
+  }).then(svg => {
+    container.innerHTML = svg;
+    const svgEl = container.querySelector('svg');
+    if (svgEl) {
+      svgEl.style.width = '200px';
+      svgEl.style.height = '200px';
+    }
   }).catch(e => {
     console.error('QR生成失败:', e);
   });
@@ -261,6 +263,7 @@ async function fetchDetail() {
       return;
     }
     voucher.value = data;
+    loading.value = false;
 
     // 缓存到 localStorage 用于离线查看
     try {
