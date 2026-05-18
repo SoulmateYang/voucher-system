@@ -21,6 +21,7 @@ import java.util.List;
 public class EmployeeVoucherController {
 
     private final VoucherService voucherService;
+    private final com.example.voucher.service.GiftService giftService;
     private final com.example.voucher.service.AuthService authService;
 
     @GetMapping
@@ -35,7 +36,7 @@ public class EmployeeVoucherController {
         return Result.success(voucherService.listByHolderPaged(holderId, page, size, keyword, status, voucherType));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:[0-9]+}")
     public Result<Object> getById(@PathVariable Long id, Authentication auth) {
         var user = authService.getCurrentUser(auth.getName());
         String holderId = user != null ? user.getUsername() : auth.getName();
@@ -77,5 +78,16 @@ public class EmployeeVoucherController {
                 DateTimeFormatter.ofPattern("yyyy-MM-dd")).atTime(LocalTime.MAX));
         }
         return Result.success(voucherService.addManual(voucher, holderId, holderName));
+    }
+
+    @GetMapping("/{id}/gift-records")
+    public Result<Object> giftRecords(@PathVariable Long id, Authentication auth) {
+        var user = authService.getCurrentUser(auth.getName());
+        String holderId = user != null ? user.getUsername() : auth.getName();
+        Voucher voucher = voucherService.getById(id);
+        if (voucher == null || !voucher.getHolderId().equals(holderId)) {
+            return Result.error(403, "无权查看该券");
+        }
+        return Result.success(giftService.getGiftRecordsByVoucherId(id));
     }
 }

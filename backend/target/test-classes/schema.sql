@@ -89,17 +89,14 @@ CREATE TABLE audit_log (
 CREATE TABLE voucher_gift (
     id BIGINT PRIMARY KEY,
     voucher_id BIGINT NOT NULL,
-    voucher_code VARCHAR(32) NOT NULL,
-    from_holder_id VARCHAR(64) NOT NULL,
-    from_holder_name VARCHAR(64),
-    to_holder_id VARCHAR(64),
-    to_holder_name VARCHAR(64),
+    from_user_id VARCHAR(64) NOT NULL,
+    from_user_name VARCHAR(64),
+    to_user_id VARCHAR(64),
+    to_user_name VARCHAR(64),
+    message VARCHAR(255),
     status VARCHAR(16) NOT NULL DEFAULT 'PENDING',
     gift_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    accepted_at DATETIME,
-    rejected_at DATETIME,
-    cancelled_at DATETIME,
-    version INT NOT NULL DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    handled_at DATETIME,
+    expire_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

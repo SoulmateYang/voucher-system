@@ -320,7 +320,7 @@ function goBack() {
 }
 
 function onUsageRecords() {
-  Toast('功能开发中');
+  router.push({ name: 'GiftRecords', params: { id: voucher.value.id } });
 }
 
 // Regenerate QR when route param changes (same component, different voucher)

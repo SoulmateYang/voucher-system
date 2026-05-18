@@ -248,6 +248,9 @@ public class GiftService {
                     .orderByDesc(VoucherGift::getGiftAt)
                     .last("LIMIT 1")
             );
+            if (gift == null) {
+                return;
+            }
             int updated = voucherMapper.update(null,
                 new LambdaUpdateWrapper<Voucher>()
                     .set(Voucher::getHolderId, gift.getFromUserId())
@@ -261,6 +264,39 @@ public class GiftService {
                 return;
             }
         }
+    }
+
+    /** 批量处理过期的 GIFTING 卡券，退回给原持有人 */
+    public int processExpiredGiftingVouchers(int batchSize) {
+        int total = 0;
+        while (true) {
+            List<VoucherGift> expiredGifts = giftMapper.selectList(
+                new LambdaQueryWrapper<VoucherGift>()
+                    .eq(VoucherGift::getStatus, "PENDING")
+                    .lt(VoucherGift::getExpireAt, LocalDateTime.now())
+                    .last("LIMIT " + batchSize)
+            );
+            if (expiredGifts.isEmpty()) break;
+
+            for (VoucherGift gift : expiredGifts) {
+                gift.setStatus("EXPIRED");
+                gift.setHandledAt(LocalDateTime.now());
+                giftMapper.updateById(gift);
+                restoreVoucher(gift.getVoucherId());
+                total++;
+            }
+        }
+        return total;
+    }
+
+    /** 查询指定卡券的转赠记录 */
+    public List<Map<String, Object>> getGiftRecordsByVoucherId(Long voucherId) {
+        List<VoucherGift> gifts = giftMapper.selectList(
+            new LambdaQueryWrapper<VoucherGift>()
+                .eq(VoucherGift::getVoucherId, voucherId)
+                .orderByDesc(VoucherGift::getGiftAt)
+        );
+        return buildGiftResultList(gifts);
     }
 
     private List<Map<String, Object>> buildGiftResultList(List<VoucherGift> gifts) {

@@ -3,6 +3,7 @@ package com.example.voucher.scheduled;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.mapper.VoucherMapper;
+import com.example.voucher.service.GiftService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 public class VoucherExpireTask {
 
     private final VoucherMapper voucherMapper;
+    private final GiftService giftService;
     private static final int BATCH_SIZE = 500;
 
     @Scheduled(cron = "0 5 0 * * ?")
@@ -35,5 +37,9 @@ public class VoucherExpireTask {
             log.debug("Expired {} vouchers in this batch", updated);
         }
         log.info("Voucher expiration task completed. Total expired: {}", total);
+
+        // Process expired GIFTING vouchers — restore to original holders
+        int giftingRestored = giftService.processExpiredGiftingVouchers(BATCH_SIZE);
+        log.info("Restored {} expired GIFTING vouchers back to sender", giftingRestored);
     }
 }

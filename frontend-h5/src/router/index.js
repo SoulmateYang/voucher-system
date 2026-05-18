@@ -43,6 +43,12 @@ const routes = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/gift-records/:id',
+    name: 'GiftRecords',
+    component: () => import('../views/GiftRecords.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/manual-add',
     name: 'ManualAdd',
     component: () => import('../views/ManualAdd.vue'),

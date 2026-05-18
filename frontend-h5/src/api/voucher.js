@@ -72,3 +72,8 @@ export function togglePin(id) {
 export function addManualVoucher(data) {
   return request.post('/vouchers/my/manual', data);
 }
+
+/** 获取卡券转赠记录 */
+export function getGiftRecords(voucherId) {
+  return request.get(`/vouchers/my/${voucherId}/gift-records`);
+}
