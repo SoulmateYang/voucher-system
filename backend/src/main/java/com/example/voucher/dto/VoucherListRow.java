@@ -22,4 +22,6 @@ public class VoucherListRow {
     private BigDecimal faceValue;
     private String batchName;
     private String voucherType;
+    private Long categoryId;
+    private String categoryName;
 }

@@ -41,6 +41,12 @@
             style="width: 140px"
           />
         </el-form-item>
+        <el-form-item label="分类">
+          <el-select v-model="filters.categoryId" placeholder="全部" clearable style="width: 130px">
+            <el-option label="全部" :value="null" />
+            <el-option v-for="cat in categoryList" :key="cat.id" :label="cat.name" :value="cat.id" />
+          </el-select>
+        </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
             <el-icon><Search /></el-icon>
@@ -54,6 +60,13 @@
       </el-form>
     </div>
 
+    <!-- Batch actions -->
+    <div v-if="selectedIds.length > 0" class="card batch-bar">
+      <span class="batch-info">已选 <strong>{{ selectedIds.length }}</strong> 条</span>
+      <el-button type="warning" size="small" @click="showBatchMoveDialog">批量移动</el-button>
+      <el-button size="small" @click="selectedIds = []">取消选择</el-button>
+    </div>
+
     <!-- Voucher table -->
     <div class="card">
       <el-table
@@ -62,7 +75,9 @@
         v-loading="tableLoading"
         empty-text="暂无卡券数据"
         style="width: 100%"
+        @selection-change="onSelectionChange"
       >
+        <el-table-column type="selection" width="40" />
         <el-table-column prop="voucherCode" label="券码" min-width="160">
           <template #default="{ row }">
             <span class="mono">{{ row.voucherCode }}</span>
@@ -111,11 +126,30 @@
             {{ formatDate(row.expireAt) }}
           </template>
         </el-table-column>
+        <el-table-column label="分类" width="110" align="center">
+          <template #default="{ row }">
+            <el-select
+              v-model="row.categoryId"
+              size="small"
+              placeholder="未归类"
+              clearable
+              style="width: 100px"
+              @change="(val) => onRowCategoryChange(row, val)"
+            >
+              <el-option v-for="cat in categoryList" :key="cat.id" :label="cat.name" :value="cat.id" />
+            </el-select>
+          </template>
+        </el-table-column>
         <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="{ row }">
             <span class="status-badge" :class="'status-' + statusClass(row.status)">
               {{ statusText(row.status) }}
             </span>
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="80" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -131,14 +165,73 @@
         />
       </div>
     </div>
+
+    <!-- Edit dialog -->
+    <el-dialog
+      v-model="editDialogVisible"
+      title="编辑卡券"
+      width="440px"
+      :close-on-click-modal="false"
+    >
+      <el-form v-if="editingRow" label-width="80px">
+        <el-form-item label="券码">
+          <el-input :model-value="editingRow.voucherCode" disabled />
+        </el-form-item>
+        <el-form-item label="有效期">
+          <el-date-picker
+            v-model="editForm.expireAt"
+            type="datetime"
+            placeholder="选择有效期"
+            value-format="YYYY-MM-DDTHH:mm:ss"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input
+            v-model="editForm.remark"
+            type="textarea"
+            :rows="3"
+            placeholder="修改备注信息"
+            maxlength="255"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="editDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="editSubmitting" @click="handleEditSubmit">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- Batch move dialog -->
+    <el-dialog
+      v-model="batchDialogVisible"
+      title="批量移动"
+      width="400px"
+      :close-on-click-modal="false"
+    >
+      <el-form label-width="80px">
+        <el-form-item label="目标分类">
+          <el-select v-model="batchCategoryId" placeholder="请选择分类" clearable style="width: 100%">
+            <el-option v-for="cat in categoryList" :key="cat.id" :label="cat.name" :value="cat.id" />
+          </el-select>
+        </el-form-item>
+        <p class="batch-hint">{{ batchCategoryId ? '将移动' : '将移除' }} {{ selectedIds.length }} 张券{{ batchCategoryId ? '到该分类' : '的分类' }}</p>
+      </el-form>
+      <template #footer>
+        <el-button @click="batchDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="batchSubmitting" @click="handleBatchSubmit">确定</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { Search, Refresh } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
 import QRCode from 'qrcode'
-import { getVoucherList } from '../api/voucher'
+import { getVoucherList, updateVoucher, assignCategory, batchAssignCategory } from '../api/voucher'
+import { getCategoryList } from '../api/category'
 
 const tableData = ref([])
 const tableLoading = ref(false)
@@ -153,7 +246,22 @@ const filters = reactive({
   voucherType: '',
   expireStart: '',
   expireEnd: '',
+  categoryId: null,
 })
+
+const categoryList = ref([])
+const selectedIds = ref([])
+
+// Edit state
+const editDialogVisible = ref(false)
+const editSubmitting = ref(false)
+const editingRow = ref(null)
+const editForm = reactive({ expireAt: '', remark: '' })
+
+// Batch move state
+const batchDialogVisible = ref(false)
+const batchSubmitting = ref(false)
+const batchCategoryId = ref(null)
 
 let searchTimer = null
 
@@ -185,6 +293,7 @@ async function fetchData() {
     if (filters.voucherType) params.voucherType = filters.voucherType
     if (filters.expireStart) params.expireStart = filters.expireStart
     if (filters.expireEnd) params.expireEnd = filters.expireEnd
+    if (filters.categoryId) params.categoryId = filters.categoryId
 
     const res = await getVoucherList(params)
     const data = res.data || {}
@@ -217,13 +326,14 @@ function handleReset() {
   filters.voucherType = ''
   filters.expireStart = ''
   filters.expireEnd = ''
+  filters.categoryId = null
   currentPage.value = 1
   fetchData()
 }
 
 // Debounced auto-search on filter changes
 watch(
-  () => [filters.holderId, filters.holderName, filters.keyword, filters.voucherType, filters.expireStart, filters.expireEnd],
+  () => [filters.holderId, filters.holderName, filters.keyword, filters.voucherType, filters.expireStart, filters.expireEnd, filters.categoryId],
   () => {
     if (searchTimer) clearTimeout(searchTimer)
     searchTimer = setTimeout(() => {
@@ -249,7 +359,79 @@ function statusText(status) {
   return map[status] || status
 }
 
+async function loadCategories() {
+  try {
+    const res = await getCategoryList()
+    categoryList.value = res.data || []
+  } catch {
+    // handled by interceptor
+  }
+}
+
+// ---- Edit ----
+function showEditDialog(row) {
+  editingRow.value = row
+  editForm.expireAt = row.expireAt ? row.expireAt.replace(' ', 'T') : ''
+  editForm.remark = row.remark || ''
+  editDialogVisible.value = true
+}
+
+async function handleEditSubmit() {
+  editSubmitting.value = true
+  try {
+    const payload = {}
+    if (editForm.expireAt) payload.expireAt = editForm.expireAt
+    if (editForm.remark !== (editingRow.value?.remark || '')) payload.remark = editForm.remark
+    await updateVoucher(editingRow.value.id, payload)
+    ElMessage.success('保存成功')
+    editDialogVisible.value = false
+    fetchData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    editSubmitting.value = false
+  }
+}
+
+// ---- Category assignment ----
+async function onRowCategoryChange(row, categoryId) {
+  try {
+    await assignCategory(row.id, categoryId || null)
+    ElMessage.success(categoryId ? '归类成功' : '已移除分类')
+  } catch {
+    // revert on failure — reload to get accurate state
+    fetchData()
+  }
+}
+
+// ---- Batch move ----
+function onSelectionChange(selection) {
+  selectedIds.value = selection.map((row) => row.id)
+}
+
+function showBatchMoveDialog() {
+  batchCategoryId.value = null
+  batchDialogVisible.value = true
+}
+
+async function handleBatchSubmit() {
+  if (selectedIds.value.length === 0) return
+  batchSubmitting.value = true
+  try {
+    await batchAssignCategory(selectedIds.value, batchCategoryId.value || null)
+    ElMessage.success(`已更新 ${selectedIds.value.length} 张券`)
+    batchDialogVisible.value = false
+    selectedIds.value = []
+    fetchData()
+  } catch {
+    // handled by interceptor
+  } finally {
+    batchSubmitting.value = false
+  }
+}
+
 onMounted(() => {
+  loadCategories()
   fetchData()
 })
 </script>
@@ -304,5 +486,26 @@ onMounted(() => {
   font-size: 11px;
   color: #969799;
   word-break: break-all;
+}
+
+.batch-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm, 12px);
+  padding: var(--space-sm, 12px) var(--space-md, 16px);
+  margin-bottom: var(--space-md, 16px);
+  background: #f0f6ff;
+  border: 1px solid #b3d8ff;
+}
+
+.batch-info {
+  font-size: 14px;
+  color: var(--color-text-secondary, #969799);
+}
+
+.batch-hint {
+  font-size: 13px;
+  color: var(--color-text-secondary, #969799);
+  margin-top: var(--space-xs, 8px);
 }
 </style>

@@ -37,6 +37,10 @@
           <el-icon><User /></el-icon>
           <template #title>员工管理</template>
         </el-menu-item>
+        <el-menu-item index="/categories">
+          <el-icon><Grid /></el-icon>
+          <template #title>分类管理</template>
+        </el-menu-item>
       </el-menu>
 
       <div class="sidebar-footer">
@@ -98,6 +102,7 @@ import {
   Select,
   DataAnalysis,
   Collection,
+  Grid,
   Setting,
   UserFilled,
   User,
@@ -112,13 +117,13 @@ const router = useRouter()
 const authStore = useAuthStore()
 
 const activeMenu = computed(() => {
-  // Match the first segment of the path
   const path = route.path
   if (path.startsWith('/batch')) return '/batch'
   if (path.startsWith('/verify')) return '/verify'
   if (path.startsWith('/reports')) return '/reports'
   if (path.startsWith('/employee-vouchers')) return '/employee-vouchers'
   if (path.startsWith('/employees')) return '/employees'
+  if (path.startsWith('/categories')) return '/categories'
   return '/batch'
 })
 

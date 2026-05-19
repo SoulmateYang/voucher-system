@@ -11,6 +11,8 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
+import org.apache.ibatis.annotations.Update;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -61,9 +63,11 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
         "SELECT v.id, v.batch_id, v.voucher_code, v.holder_id, v.holder_name, " +
         "       v.status, v.issued_at, v.expire_at, v.used_at, v.approve_ref, " +
         "       v.remark, v.face_value, v.created_at, " +
-        "       b.batch_name, b.voucher_type " +
+        "       b.batch_name, b.voucher_type, " +
+        "       v.category_id, c.name AS category_name " +
         "FROM voucher v " +
         "LEFT JOIN voucher_batch b ON v.batch_id = b.id " +
+        "LEFT JOIN voucher_category c ON v.category_id = c.id " +
         "<where>" +
         "  <if test='holderId != null and holderId != \"\"'>AND v.holder_id LIKE CONCAT('%', #{holderId}, '%')</if>" +
         "  <if test='holderName != null and holderName != \"\"'>AND v.holder_name LIKE CONCAT('%', #{holderName}, '%')</if>" +
@@ -71,6 +75,7 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
         "  <if test='voucherType != null and voucherType != \"\"'>AND b.voucher_type = #{voucherType}</if>" +
         "  <if test='expireStart != null'>AND v.expire_at &gt;= #{expireStart}</if>" +
         "  <if test='expireEnd != null'>AND v.expire_at &lt;= #{expireEnd}</if>" +
+        "  <if test='categoryId != null'>AND v.category_id = #{categoryId}</if>" +
         "</where>" +
         "ORDER BY v.created_at DESC" +
         "</script>")
@@ -80,5 +85,19 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
                                                 @Param("keyword") String keyword,
                                                 @Param("voucherType") String voucherType,
                                                 @Param("expireStart") LocalDateTime expireStart,
-                                                @Param("expireEnd") LocalDateTime expireEnd);
+                                                @Param("expireEnd") LocalDateTime expireEnd,
+                                                @Param("categoryId") Long categoryId);
+
+    @Update("<script>" +
+        "UPDATE voucher SET category_id = #{categoryId}, updated_at = NOW() " +
+        "WHERE id IN " +
+        "<foreach collection='voucherIds' item='id' open='(' separator=',' close=')'>" +
+        "  #{id}" +
+        "</foreach>" +
+        "</script>")
+    int batchUpdateCategory(@Param("voucherIds") List<Long> voucherIds,
+                            @Param("categoryId") Long categoryId);
+
+    @Update("UPDATE voucher SET category_id = NULL, updated_at = NOW() WHERE category_id = #{categoryId}")
+    int clearCategoryByCategoryId(@Param("categoryId") Long categoryId);
 }

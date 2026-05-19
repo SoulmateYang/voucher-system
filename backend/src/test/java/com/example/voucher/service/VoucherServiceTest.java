@@ -5,7 +5,9 @@ import com.example.voucher.dto.CreateBatchRequest;
 import com.example.voucher.dto.IssueVoucherRequest;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherBatch;
+import com.example.voucher.entity.VoucherCategory;
 import com.example.voucher.mapper.VoucherBatchMapper;
+import com.example.voucher.mapper.VoucherCategoryMapper;
 import com.example.voucher.mapper.VoucherMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +34,9 @@ class VoucherServiceTest {
 
     @Autowired
     private VoucherBatchMapper batchMapper;
+
+    @Autowired
+    private VoucherCategoryMapper categoryMapper;
 
     private VoucherBatch resourceBatch;
     private VoucherBatch couponBatch;
@@ -223,19 +228,19 @@ class VoucherServiceTest {
 
     @Test
     void listAllPaged_shouldReturnPagedResults() {
-        var page = voucherService.listAllPaged(1, 5, null, null, null, null, null, null);
+        var page = voucherService.listAllPaged(1, 5, null, null, null, null, null, null, null);
         assertEquals(4, page.getTotal());
     }
 
     @Test
     void listAllPaged_shouldFilterByHolderName() {
-        var page = voucherService.listAllPaged(1, 10, null, "张三", null, null, null, null);
+        var page = voucherService.listAllPaged(1, 10, null, "张三", null, null, null, null, null);
         assertEquals(2, page.getTotal());
     }
 
     @Test
     void listAllPaged_shouldFilterByVoucherType() {
-        var page = voucherService.listAllPaged(1, 10, null, null, null, "COUPON", null, null);
+        var page = voucherService.listAllPaged(1, 10, null, null, null, "COUPON", null, null, null);
         assertEquals(2, page.getTotal());
         page.getRecords().forEach(r -> assertEquals("COUPON", r.getVoucherType()));
     }
@@ -260,5 +265,83 @@ class VoucherServiceTest {
         BusinessException ex = assertThrows(BusinessException.class,
             () -> voucherService.lookup(v.getVoucherCode()));
         assertEquals(4003, ex.getCode());
+    }
+
+    // ---- Edit voucher tests ----
+
+    @Test
+    void updateVoucher_shouldUpdateExpireAtAndRemark() {
+        Voucher v = voucherMapper.selectList(null).get(0);
+        LocalDateTime newExpire = LocalDateTime.now().plusDays(60);
+        Voucher updated = voucherService.updateVoucher(v.getId(), newExpire, "新备注");
+
+        assertEquals("新备注", updated.getRemark());
+        // Refresh from DB
+        Voucher refreshed = voucherMapper.selectById(v.getId());
+        assertEquals("新备注", refreshed.getRemark());
+    }
+
+    @Test
+    void updateVoucher_shouldThrowForNonExistent() {
+        assertThrows(BusinessException.class,
+            () -> voucherService.updateVoucher(99999L, null, "test"));
+    }
+
+    // ---- Category assignment tests ----
+
+    @Test
+    void assignCategory_shouldAssignCategoryToVoucher() {
+        VoucherCategory cat = new VoucherCategory();
+        cat.setName("测试分类");
+        cat.setSortOrder(1);
+        categoryMapper.insert(cat);
+
+        Voucher v = voucherMapper.selectList(null).get(0);
+        voucherService.assignCategory(v.getId(), cat.getId());
+
+        Voucher refreshed = voucherMapper.selectById(v.getId());
+        assertEquals(cat.getId(), refreshed.getCategoryId());
+    }
+
+    @Test
+    void assignCategory_shouldThrowForNonExistentVoucher() {
+        assertThrows(BusinessException.class,
+            () -> voucherService.assignCategory(99999L, 1L));
+    }
+
+    @Test
+    void assignCategory_shouldThrowForNonExistentCategory() {
+        Voucher v = voucherMapper.selectList(null).get(0);
+        assertThrows(BusinessException.class,
+            () -> voucherService.assignCategory(v.getId(), 99999L));
+    }
+
+    @Test
+    void batchAssignCategory_shouldUpdateMultipleVouchers() {
+        VoucherCategory cat = new VoucherCategory();
+        cat.setName("批量分类");
+        cat.setSortOrder(1);
+        categoryMapper.insert(cat);
+
+        List<Voucher> all = voucherMapper.selectList(null);
+        List<Long> ids = all.stream().map(Voucher::getId).toList();
+
+        int affected = voucherService.batchAssignCategory(ids, cat.getId());
+        assertEquals(all.size(), affected);
+
+        for (Long id : ids) {
+            Voucher v = voucherMapper.selectById(id);
+            assertEquals(cat.getId(), v.getCategoryId());
+        }
+    }
+
+    @Test
+    void batchAssignCategory_shouldThrowWhenExceedingLimit() {
+        java.util.List<Long> hugeList = new java.util.ArrayList<>();
+        for (long i = 1; i <= 501; i++) {
+            hugeList.add(i);
+        }
+        assertThrows(BusinessException.class,
+            () -> voucherService.batchAssignCategory(hugeList, 1L));
     }
 }

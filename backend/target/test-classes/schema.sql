@@ -53,6 +53,7 @@ CREATE TABLE voucher (
     is_pinned INT DEFAULT 0,
     pinned_at DATETIME,
     face_value DECIMAL(10,2),
+    category_id BIGINT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -60,6 +61,15 @@ CREATE TABLE voucher (
 CREATE INDEX idx_v_holder ON voucher (holder_id);
 CREATE INDEX idx_v_batch ON voucher (batch_id);
 CREATE INDEX idx_v_status ON voucher (status);
+CREATE INDEX idx_v_category ON voucher (category_id);
+
+CREATE TABLE voucher_category (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(64) NOT NULL UNIQUE,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
 CREATE TABLE verification_log (
     id BIGINT PRIMARY KEY,

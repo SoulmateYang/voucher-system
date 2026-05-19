@@ -2,6 +2,7 @@ com\example\voucher\service\VoucherBatchServiceTest.class
 com\example\voucher\service\GiftServiceTest.class
 com\example\voucher\service\EmployeeServiceTest.class
 com\example\voucher\service\ReportServiceTest.class
+com\example\voucher\service\VoucherCategoryServiceTest.class
 com\example\voucher\common\VoucherCodeUtilTest.class
 com\example\voucher\common\VoucherTypeTest.class
 com\example\voucher\service\VoucherServiceTest.class

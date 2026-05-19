@@ -7,5 +7,6 @@ D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\vouche
 D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\common\BusinessExceptionTest.java
 D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\service\VoucherBatchServiceTest.java
 D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\common\VoucherTypeTest.java
+D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\service\VoucherCategoryServiceTest.java
 D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\common\VoucherCodeUtilTest.java
 D:\work\projectTest\card-voucher-system\backend\src\test\java\com\example\voucher\service\AuthServiceTest.java

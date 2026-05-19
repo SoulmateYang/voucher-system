@@ -2,6 +2,7 @@ com\example\voucher\dto\CreateBatchRequest.class
 com\example\voucher\mapper\VoucherBatchMapper.class
 com\example\voucher\controller\AuthController.class
 com\example\voucher\controller\EmployeeController.class
+com\example\voucher\service\VoucherCategoryService.class
 com\example\voucher\mapper\SysUserMapper.class
 com\example\voucher\VoucherApplication.class
 com\example\voucher\dto\GiftVoucherRequest.class
@@ -26,6 +27,8 @@ com\example\voucher\dto\CreateEmployeeRequest.class
 com\example\voucher\controller\VoucherController.class
 com\example\voucher\entity\AuditLog$AuditLogBuilder.class
 com\example\voucher\controller\EmployeeVoucherController.class
+com\example\voucher\controller\CategoryController.class
+com\example\voucher\mapper\VoucherCategoryMapper.class
 com\example\voucher\mapper\VerificationLogMapper.class
 com\example\voucher\controller\GiftController.class
 com\example\voucher\mapper\VoucherMapper.class
@@ -34,6 +37,7 @@ com\example\voucher\service\VoucherBatchService.class
 com\example\voucher\common\VoucherType.class
 com\example\voucher\controller\ReportsController.class
 com\example\voucher\dto\LoginRequest.class
+com\example\voucher\entity\VoucherCategory.class
 com\example\voucher\mapper\VoucherGiftMapper.class
 com\example\voucher\service\CallbackService.class
 com\example\voucher\entity\VerificationLog.class

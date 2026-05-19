@@ -1,4 +1,4 @@
 -------------------------------------------------------------------------------
 Test set: com.example.voucher.service.AuthServiceTest
 -------------------------------------------------------------------------------
-Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.226 s -- in com.example.voucher.service.AuthServiceTest
+Tests run: 7, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 4.087 s -- in com.example.voucher.service.AuthServiceTest

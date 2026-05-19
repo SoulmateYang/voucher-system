@@ -12,9 +12,11 @@ import com.example.voucher.entity.AuditLog;
 import com.example.voucher.entity.VerificationLog;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherBatch;
+import com.example.voucher.entity.VoucherCategory;
 import com.example.voucher.mapper.AuditLogMapper;
 import com.example.voucher.mapper.VerificationLogMapper;
 import com.example.voucher.mapper.VoucherBatchMapper;
+import com.example.voucher.mapper.VoucherCategoryMapper;
 import com.example.voucher.mapper.VoucherMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -36,6 +38,7 @@ public class VoucherService {
     private final VerificationLogMapper verificationLogMapper;
     private final AuditLogMapper auditLogMapper;
     private final VoucherBatchMapper batchMapper;
+    private final VoucherCategoryMapper categoryMapper;
     private final VoucherCodeUtil voucherCodeUtil;
 
     public Map<String, Object> lookup(String voucherCode) {
@@ -495,14 +498,76 @@ public class VoucherService {
     public IPage<VoucherListRow> listAllPaged(int page, int size,
                                                String holderId, String holderName,
                                                String keyword, String voucherType,
-                                               LocalDateTime expireStart, LocalDateTime expireEnd) {
+                                               LocalDateTime expireStart, LocalDateTime expireEnd,
+                                               Long categoryId) {
         Page<VoucherListRow> p = new Page<>(page, size);
-        // Set expireEnd to end of day if provided
         LocalDateTime expireEndAdjusted = expireEnd;
         if (expireEnd != null) {
             expireEndAdjusted = expireEnd.withHour(23).withMinute(59).withSecond(59);
         }
         return voucherMapper.selectPagedWithBatch(p, holderId, holderName, keyword,
-            voucherType, expireStart, expireEndAdjusted);
+            voucherType, expireStart, expireEndAdjusted, categoryId);
+    }
+
+    @Transactional
+    public Voucher updateVoucher(Long id, LocalDateTime expireAt, String remark) {
+        Voucher voucher = voucherMapper.selectById(id);
+        if (voucher == null) {
+            throw new BusinessException("券不存在");
+        }
+        Map<String, Object> changes = new HashMap<>();
+        if (expireAt != null) {
+            Map<String, Object> expireChange = new HashMap<>();
+            expireChange.put("old", voucher.getExpireAt() != null ? voucher.getExpireAt().toString() : null);
+            expireChange.put("new", expireAt.toString());
+            changes.put("expireAt", expireChange);
+            voucher.setExpireAt(expireAt);
+        }
+        if (remark != null) {
+            Map<String, Object> remarkChange = new HashMap<>();
+            remarkChange.put("old", voucher.getRemark());
+            remarkChange.put("new", remark);
+            changes.put("remark", remarkChange);
+            voucher.setRemark(remark);
+        }
+        if (changes.isEmpty()) {
+            return voucher;
+        }
+        voucher.setUpdatedAt(LocalDateTime.now());
+        voucherMapper.updateById(voucher);
+        writeAudit("voucher", voucher.getId(), "EDIT_VOUCHER", null, null, changes);
+        return voucher;
+    }
+
+    public void assignCategory(Long voucherId, Long categoryId) {
+        Voucher voucher = voucherMapper.selectById(voucherId);
+        if (voucher == null) {
+            throw new BusinessException("券不存在");
+        }
+        if (categoryId != null) {
+            VoucherCategory category = categoryMapper.selectById(categoryId);
+            if (category == null) {
+                throw new BusinessException("分类不存在");
+            }
+        }
+        voucher.setCategoryId(categoryId);
+        voucher.setUpdatedAt(LocalDateTime.now());
+        voucherMapper.updateById(voucher);
+    }
+
+    public int batchAssignCategory(List<Long> voucherIds, Long categoryId) {
+        if (voucherIds == null || voucherIds.isEmpty()) {
+            throw new BusinessException("请选择要操作的券");
+        }
+        if (voucherIds.size() > 500) {
+            throw new BusinessException("单次最多操作 500 条");
+        }
+        if (categoryId != null) {
+            VoucherCategory category = categoryMapper.selectById(categoryId);
+            if (category == null) {
+                throw new BusinessException("分类不存在");
+            }
+        }
+        return voucherMapper.batchUpdateCategory(voucherIds, categoryId);
     }
 }

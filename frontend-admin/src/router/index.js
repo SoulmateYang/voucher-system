@@ -47,6 +47,12 @@ const routes = [
         component: () => import('../views/EmployeeManage.vue'),
         meta: { title: '员工管理' },
       },
+      {
+        path: 'categories',
+        name: 'CategoryManage',
+        component: () => import('../views/CategoryManage.vue'),
+        meta: { title: '分类管理' },
+      },
     ],
   },
 ]

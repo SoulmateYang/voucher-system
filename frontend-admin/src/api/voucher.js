@@ -27,3 +27,16 @@ export function getDailyTrend(params) {
 export function getVoucherList(params) {
   return request.get('/vouchers', { params })
 }
+
+export function updateVoucher(id, data) {
+  return request.put(`/vouchers/${id}`, data)
+}
+
+export function assignCategory(id, categoryId) {
+  return request.put(`/vouchers/${id}/category`, { categoryId })
+}
+
+export function batchAssignCategory(voucherIds, categoryId) {
+  return request.put('/vouchers/category/batch', { voucherIds, categoryId })
+}
+
