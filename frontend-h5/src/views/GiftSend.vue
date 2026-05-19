@@ -45,7 +45,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Toast } from 'vant';
+import { showSuccessToast, showFailToast } from 'vant';
 import { getVoucherDetail, giftVoucher } from '../api/voucher';
 
 const route = useRoute();
@@ -70,14 +70,14 @@ async function fetchVoucher() {
     const res = await getVoucherDetail(route.params.id);
     voucher.value = res?.data || res;
   } catch {
-    Toast.fail('加载卡券信息失败');
+    showFailToast('加载卡券信息失败');
     router.back();
   }
 }
 
 async function onGift() {
   if (!toEmployeeId.value.trim()) {
-    Toast.fail('请输入接收人工号');
+    showFailToast('请输入接收人工号');
     return;
   }
   submitting.value = true;
@@ -87,7 +87,7 @@ async function onGift() {
       toEmployeeId: toEmployeeId.value.trim(),
       message: message.value.trim(),
     });
-    Toast.success('赠送成功');
+    showSuccessToast('赠送成功');
     router.replace({ name: 'VoucherList' });
   } catch {
     // error handled by interceptor

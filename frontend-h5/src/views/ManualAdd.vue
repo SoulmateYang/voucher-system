@@ -81,7 +81,7 @@
 <script setup>
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
-import { Toast } from 'vant';
+import { showSuccessToast } from 'vant';
 import { addManualVoucher } from '../api/voucher';
 
 const router = useRouter();
@@ -129,7 +129,7 @@ async function onSubmit() {
       voucherCode: form.voucherCode,
       remark: form.remark,
     });
-    Toast.success('添加成功');
+    showSuccessToast('添加成功');
     router.replace({ name: 'VoucherList' });
   } catch {
     // handled by interceptor

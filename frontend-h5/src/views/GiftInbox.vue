@@ -61,7 +61,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Toast, Dialog } from 'vant';
+import { showSuccessToast, showConfirmDialog } from 'vant';
 import { getGiftInbox, getGiftOutbox, acceptGift, rejectGift, cancelGift } from '../api/voucher';
 
 const router = useRouter();
@@ -108,33 +108,33 @@ async function fetchList() {
 
 async function onAccept(item) {
   try {
-    await Dialog.confirm({ title: '确认领取', message: '领取后卡券将归入你的卡券库' });
+    await showConfirmDialog({ title: '确认领取', message: '领取后卡券将归入你的卡券库' });
   } catch { return; }
   try {
     await acceptGift(item.giftId);
-    Toast.success('领取成功');
+    showSuccessToast('领取成功');
     fetchList();
   } catch { /* handled */ }
 }
 
 async function onReject(item) {
   try {
-    await Dialog.confirm({ title: '确认拒绝', message: '拒绝后卡券将退回赠送方' });
+    await showConfirmDialog({ title: '确认拒绝', message: '拒绝后卡券将退回赠送方' });
   } catch { return; }
   try {
     await rejectGift(item.giftId);
-    Toast.success('已拒绝');
+    showSuccessToast('已拒绝');
     fetchList();
   } catch { /* handled */ }
 }
 
 async function onCancel(item) {
   try {
-    await Dialog.confirm({ title: '确认撤销', message: '撤销后卡券将回到你的卡券库' });
+    await showConfirmDialog({ title: '确认撤销', message: '撤销后卡券将回到你的卡券库' });
   } catch { return; }
   try {
     await cancelGift(item.giftId);
-    Toast.success('已撤销');
+    showSuccessToast('已撤销');
     fetchList();
   } catch { /* handled */ }
 }

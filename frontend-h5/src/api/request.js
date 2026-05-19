@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Toast } from 'vant';
+import { showFailToast } from 'vant';
 
 const TOKEN_KEY = 'card_voucher_token';
 
@@ -44,11 +44,11 @@ request.interceptors.response.use(
     if (res.code === 401) {
       removeToken();
       window.location.hash = '#/login';
-      Toast.fail('登录已过期，请重新登录');
+      showFailToast('登录已过期，请重新登录');
       return Promise.reject(new Error('登录已过期，请重新登录'));
     }
     if (res.code !== 0) {
-      Toast.fail(res.message || '请求失败');
+      showFailToast(res.message || '请求失败');
       return Promise.reject(new Error(res.message || '请求失败'));
     }
     return res;
@@ -60,13 +60,13 @@ request.interceptors.response.use(
       if (status === 401) {
         removeToken();
         window.location.hash = '#/login';
-        Toast.fail('登录已过期，请重新登录');
+        showFailToast('登录已过期，请重新登录');
       } else {
         const message = data?.message || '请求失败，请稍后重试';
-        Toast.fail(message);
+        showFailToast(message);
       }
     } else {
-      Toast.fail('网络异常，请检查网络连接');
+      showFailToast('网络异常，请检查网络连接');
     }
     return Promise.reject(error);
   },

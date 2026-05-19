@@ -108,7 +108,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
-import { Toast } from 'vant';
+import { showSuccessToast } from 'vant';
 import { getMyVouchers, toggleFavorite, togglePin } from '../api/voucher';
 
 const router = useRouter();
@@ -214,7 +214,7 @@ async function onToggleFavorite(item) {
   try {
     await toggleFavorite(item.id);
     item.isFavorite = item.isFavorite ? 0 : 1;
-    Toast.success(item.isFavorite ? '已收藏' : '已取消收藏');
+    showSuccessToast(item.isFavorite ? '已收藏' : '已取消收藏');
   } catch { /* handled */ }
 }
 
@@ -222,7 +222,7 @@ async function onTogglePin(item) {
   try {
     await togglePin(item.id);
     item.isPinned = item.isPinned ? 0 : 1;
-    Toast.success(item.isPinned ? '已置顶' : '已取消置顶');
+    showSuccessToast(item.isPinned ? '已置顶' : '已取消置顶');
   } catch { /* handled */ }
 }
 

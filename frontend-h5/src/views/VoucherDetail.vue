@@ -161,7 +161,7 @@
 <script setup>
 import { ref, computed, onMounted, nextTick, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Toast, showToast } from 'vant';
+import { showToast, showSuccessToast, showFailToast } from 'vant';
 import QRCode from 'qrcode';
 import { getVoucherDetail } from '../api/voucher';
 
@@ -236,9 +236,9 @@ async function copyVoucherCode() {
   if (!voucher.value?.voucherCode) return;
   try {
     await navigator.clipboard.writeText(voucher.value.voucherCode);
-    Toast.success('已复制券码');
+    showSuccessToast('已复制券码');
   } catch {
-    Toast.fail('复制失败');
+    showFailToast('复制失败');
   }
 }
 

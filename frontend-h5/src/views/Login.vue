@@ -46,7 +46,7 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Toast } from 'vant';
+import { showSuccessToast, showFailToast } from 'vant';
 import { login } from '../api/voucher';
 import { setToken } from '../api/request';
 
@@ -78,14 +78,14 @@ async function handleLogin() {
     const token = res?.data?.token || res?.token;
     if (token) {
       setToken(token);
-      Toast.success('登录成功');
+      showSuccessToast('登录成功');
       await router.replace({ name: 'VoucherList' });
     } else {
-      Toast.fail('登录失败，未获取到凭证');
+      showFailToast('登录失败，未获取到凭证');
     }
   } catch (err) {
     if (!err.response) {
-      Toast.fail('网络异常，请稍后重试');
+      showFailToast('网络异常，请稍后重试');
     }
   } finally {
     submitting.value = false;
