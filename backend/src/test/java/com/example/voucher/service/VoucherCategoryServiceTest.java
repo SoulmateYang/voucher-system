@@ -28,21 +28,34 @@ class VoucherCategoryServiceTest {
 
     @Test
     void testCreateCategory() {
-        VoucherCategory cat = categoryService.create("测试分类");
+        VoucherCategory cat = categoryService.create("测试分类", "COUPON");
         assertNotNull(cat.getId());
         assertEquals("测试分类", cat.getName());
+        assertEquals("COUPON", cat.getVoucherType());
+    }
+
+    @Test
+    void testCreateCategoryWithResourceUsageType() {
+        VoucherCategory cat = categoryService.create("因公", "RESOURCE_USAGE");
+        assertEquals("RESOURCE_USAGE", cat.getVoucherType());
+    }
+
+    @Test
+    void testCreateCategoryWithStoredValueType() {
+        VoucherCategory cat = categoryService.create("储值", "STORED_VALUE");
+        assertEquals("STORED_VALUE", cat.getVoucherType());
     }
 
     @Test
     void testCreateDuplicateNameThrowsException() {
-        categoryService.create("唯一分类");
-        assertThrows(BusinessException.class, () -> categoryService.create("唯一分类"));
+        categoryService.create("唯一分类", "COUPON");
+        assertThrows(BusinessException.class, () -> categoryService.create("唯一分类", "COUPON"));
     }
 
     @Test
     void testListCategories() {
-        categoryService.create("分类A");
-        categoryService.create("分类B");
+        categoryService.create("分类A", "COUPON");
+        categoryService.create("分类B", "RESOURCE_USAGE");
         List<VoucherCategory> list = categoryService.list();
         assertEquals(2, list.size());
         assertTrue(list.get(0).getSortOrder() <= list.get(1).getSortOrder());
@@ -50,14 +63,15 @@ class VoucherCategoryServiceTest {
 
     @Test
     void testUpdateCategory() {
-        VoucherCategory cat = categoryService.create("旧名称");
-        VoucherCategory updated = categoryService.update(cat.getId(), "新名称");
+        VoucherCategory cat = categoryService.create("旧名称", "COUPON");
+        VoucherCategory updated = categoryService.update(cat.getId(), "新名称", "STORED_VALUE");
         assertEquals("新名称", updated.getName());
+        assertEquals("STORED_VALUE", updated.getVoucherType());
     }
 
     @Test
     void testDeleteCategory() {
-        VoucherCategory cat = categoryService.create("待删除");
+        VoucherCategory cat = categoryService.create("待删除", "COUPON");
         categoryService.delete(cat.getId());
         assertNull(categoryMapper.selectById(cat.getId()));
     }

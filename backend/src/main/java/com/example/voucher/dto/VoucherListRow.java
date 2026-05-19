@@ -20,6 +20,8 @@ public class VoucherListRow {
     private String approveRef;
     private String remark;
     private BigDecimal faceValue;
+    private BigDecimal initialBalance;
+    private BigDecimal remainingBalance;
     private String batchName;
     private String voucherType;
     private Long categoryId;

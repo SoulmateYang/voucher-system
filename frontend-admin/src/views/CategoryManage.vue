@@ -13,6 +13,11 @@
         <el-table-column prop="id" label="ID" width="100" />
         <el-table-column prop="name" label="分类名称" min-width="200" />
         <el-table-column prop="sortOrder" label="排序" width="80" align="center" />
+        <el-table-column prop="voucherType" label="卷类型" width="110" align="center">
+          <template #default="{ row }">
+            <el-tag :type="typeTag(row.voucherType)" size="small">{{ typeLabel(row.voucherType) }}</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column label="操作" width="180" align="center">
           <template #default="{ row }">
             <el-button size="small" @click="showEditDialog(row)">编辑</el-button>
@@ -38,6 +43,13 @@
             clearable
           />
         </el-form-item>
+        <el-form-item label="卷类型">
+          <el-select v-model="formVoucherType" placeholder="请选择卷类型" style="width: 100%">
+            <el-option label="优惠券" value="COUPON" />
+            <el-option label="因私使用" value="RESOURCE_USAGE" />
+            <el-option label="储值卡" value="STORED_VALUE" />
+          </el-select>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -59,6 +71,17 @@ const dialogVisible = ref(false)
 const submitting = ref(false)
 const editingId = ref(null)
 const formName = ref('')
+const formVoucherType = ref('COUPON')
+
+function typeTag(voucherType) {
+  const map = { COUPON: 'warning', RESOURCE_USAGE: '', STORED_VALUE: 'success' }
+  return map[voucherType] || ''
+}
+
+function typeLabel(voucherType) {
+  const map = { COUPON: '优惠券', RESOURCE_USAGE: '因私使用', STORED_VALUE: '储值卡' }
+  return map[voucherType] || voucherType
+}
 
 async function fetchData() {
   loading.value = true
@@ -75,12 +98,14 @@ async function fetchData() {
 function showCreateDialog() {
   editingId.value = null
   formName.value = ''
+  formVoucherType.value = 'COUPON'
   dialogVisible.value = true
 }
 
 function showEditDialog(row) {
   editingId.value = row.id
   formName.value = row.name
+  formVoucherType.value = row.voucherType || 'COUPON'
   dialogVisible.value = true
 }
 
@@ -90,13 +115,17 @@ async function handleSubmit() {
     ElMessage.warning('请输入分类名称')
     return
   }
+  if (!formVoucherType.value) {
+    ElMessage.warning('请选择卷类型')
+    return
+  }
   submitting.value = true
   try {
     if (editingId.value) {
-      await updateCategory(editingId.value, name)
+      await updateCategory(editingId.value, name, formVoucherType.value)
       ElMessage.success('更新成功')
     } else {
-      await createCategory(name)
+      await createCategory(name, formVoucherType.value)
       ElMessage.success('创建成功')
     }
     dialogVisible.value = false

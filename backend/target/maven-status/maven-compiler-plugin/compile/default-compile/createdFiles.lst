@@ -7,6 +7,7 @@ com\example\voucher\mapper\SysUserMapper.class
 com\example\voucher\VoucherApplication.class
 com\example\voucher\dto\GiftVoucherRequest.class
 com\example\voucher\service\ReportService$ExportRow.class
+com\example\voucher\mapper\VoucherConsumptionMapper.class
 com\example\voucher\dto\IssueVoucherRequest.class
 com\example\voucher\common\Result.class
 com\example\voucher\dto\VoucherListRow.class
@@ -38,6 +39,7 @@ com\example\voucher\common\VoucherType.class
 com\example\voucher\controller\ReportsController.class
 com\example\voucher\dto\LoginRequest.class
 com\example\voucher\entity\VoucherCategory.class
+com\example\voucher\entity\VoucherConsumption.class
 com\example\voucher\mapper\VoucherGiftMapper.class
 com\example\voucher\service\CallbackService.class
 com\example\voucher\entity\VerificationLog.class

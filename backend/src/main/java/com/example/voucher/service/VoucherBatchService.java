@@ -6,7 +6,9 @@ import com.example.voucher.common.VoucherType;
 import com.example.voucher.dto.CreateBatchRequest;
 import com.example.voucher.dto.IssueVoucherRequest;
 import com.example.voucher.entity.VoucherBatch;
+import com.example.voucher.entity.VoucherCategory;
 import com.example.voucher.mapper.VoucherBatchMapper;
+import com.example.voucher.mapper.VoucherCategoryMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,13 +19,17 @@ import java.util.Map;
 public class VoucherBatchService {
 
     private final VoucherBatchMapper batchMapper;
+    private final VoucherCategoryMapper categoryMapper;
     private final VoucherService voucherService;
 
     public VoucherBatch create(CreateBatchRequest request, String operatorName) {
-        if (!VoucherType.isValid(request.getVoucherType())) {
-            throw new BusinessException("无效的券类型: " + request.getVoucherType());
+        VoucherCategory category = categoryMapper.selectById(request.getCategoryId());
+        if (category == null) {
+            throw new BusinessException("分类不存在");
         }
-        if (VoucherType.isCoupon(request.getVoucherType())) {
+        String voucherType = category.getVoucherType();
+
+        if (VoucherType.isCoupon(voucherType)) {
             if (request.getDiscountType() == null || request.getDiscountValue() == null) {
                 throw new BusinessException("优惠券必须配置折扣类型和折扣值");
             }
@@ -33,9 +39,16 @@ public class VoucherBatchService {
             }
         }
 
+        if (VoucherType.isStoredValue(voucherType)) {
+            if (request.getFaceValue() == null || request.getFaceValue().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                throw new BusinessException("储值卡必须设置充值金额");
+            }
+        }
+
         VoucherBatch batch = new VoucherBatch();
         batch.setBatchName(request.getBatchName());
-        batch.setVoucherType(request.getVoucherType());
+        batch.setCategoryId(category.getId());
+        batch.setVoucherType(voucherType);
         batch.setResourceDesc(request.getResourceDesc());
         batch.setValidDays(request.getValidDays());
         batch.setTotalCount(0);
@@ -45,6 +58,7 @@ public class VoucherBatchService {
         batch.setDiscountValue(request.getDiscountValue());
         batch.setMinOrderAmount(request.getMinOrderAmount());
         batch.setFaceValue(request.getFaceValue());
+        batch.setBonusValue(request.getBonusValue());
         if (request.getTransferable() != null) {
             batch.setTransferable(request.getTransferable());
         }

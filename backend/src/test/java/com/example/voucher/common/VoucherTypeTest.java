@@ -17,6 +17,11 @@ class VoucherTypeTest {
     }
 
     @Test
+    void isValid_shouldReturnTrueForStoredValue() {
+        assertTrue(VoucherType.isValid("STORED_VALUE"));
+    }
+
+    @Test
     void isValid_shouldReturnFalseForNull() {
         assertFalse(VoucherType.isValid(null));
     }
@@ -34,6 +39,16 @@ class VoucherTypeTest {
     @Test
     void isCoupon_shouldReturnFalseForResourceUsage() {
         assertFalse(VoucherType.isCoupon("RESOURCE_USAGE"));
+    }
+
+    @Test
+    void isStoredValue_shouldReturnTrueForStoredValue() {
+        assertTrue(VoucherType.isStoredValue("STORED_VALUE"));
+    }
+
+    @Test
+    void isStoredValue_shouldReturnFalseForCoupon() {
+        assertFalse(VoucherType.isStoredValue("COUPON"));
     }
 
     @Test
@@ -57,6 +72,7 @@ class VoucherTypeTest {
     void constants_shouldHaveCorrectValues() {
         assertEquals("RESOURCE_USAGE", VoucherType.RESOURCE_USAGE);
         assertEquals("COUPON", VoucherType.COUPON);
-        assertEquals(2, VoucherType.ALL_TYPES.size());
+        assertEquals("STORED_VALUE", VoucherType.STORED_VALUE);
+        assertEquals(3, VoucherType.ALL_TYPES.size());
     }
 }

@@ -78,8 +78,8 @@
               <div class="detail-row">
                 <label>券类型</label>
                 <span class="detail-value">
-                  <span class="status-badge" :class="voucherDetail.voucherType === 'COUPON' ? 'status-warning' : 'status-used'">
-                    {{ voucherDetail.voucherType === 'COUPON' ? '优惠券' : '因私使用' }}
+                  <span class="status-badge" :class="typeBadgeClass(voucherDetail.voucherType)">
+                    {{ typeLabel(voucherDetail.voucherType) }}
                   </span>
                 </span>
               </div>
@@ -89,7 +89,13 @@
                   ¥{{ voucherDetail.faceValue }}
                 </span>
               </div>
-              <div v-if="voucherDetail.voucherType !== 'COUPON'" class="detail-row">
+              <div v-if="voucherDetail.voucherType === 'STORED_VALUE'" class="detail-row">
+                <label>剩余余额</label>
+                <span class="detail-value" style="font-size: 20px; font-weight: 600; color: #07c160">
+                  ¥{{ voucherDetail.remainingBalance || 0 }}
+                </span>
+              </div>
+              <div v-if="voucherDetail.voucherType === 'RESOURCE_USAGE'" class="detail-row">
                 <label>资源类型</label>
                 <span class="detail-value">{{ voucherDetail.resourceType }}</span>
               </div>
@@ -112,7 +118,19 @@
                   {{ voucherDetail.voucherCode }}
                 </span>
               </div>
-              <div v-if="verifyResult.show" class="detail-row">
+              <div v-if="verifyResult.show && verifyResult.isStoredValue" class="detail-row">
+                <label>扣减金额</label>
+                <span class="detail-value" style="font-size: 18px; font-weight: 600; color: #07c160">
+                  ¥{{ verifyResult.deductAmount }}
+                </span>
+              </div>
+              <div v-if="verifyResult.show && verifyResult.isStoredValue" class="detail-row">
+                <label>剩余余额</label>
+                <span class="detail-value" style="font-size: 16px; font-weight: 600; color: #323233">
+                  ¥{{ verifyResult.remainingBalance }}
+                </span>
+              </div>
+              <div v-if="verifyResult.show && !verifyResult.isStoredValue" class="detail-row">
                 <label>抵扣金额</label>
                 <span class="detail-value" style="font-size: 18px; font-weight: 600; color: #07c160">
                   ¥{{ verifyResult.discountAmount }}
@@ -121,12 +139,12 @@
             </div>
 
             <el-input-number
-              v-if="voucherDetail.voucherType === 'COUPON' && voucherDetail.discountType === 'PERCENTAGE' && voucherDetail.status === 'valid'"
+              v-if="showOrderAmountInput && voucherDetail.status === 'valid'"
               v-model="orderAmount"
               :min="0"
               :precision="2"
               :controls="false"
-              placeholder="请输入订单金额"
+              :placeholder="orderAmountPlaceholder"
               style="width: 100%; margin-bottom: 12px"
             />
 
@@ -177,7 +195,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick, watch } from 'vue'
+import { ref, reactive, computed, onMounted, nextTick, watch } from 'vue'
 import { Search, Ticket } from '@element-plus/icons-vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { verifyVoucher, confirmVerify, getTodayRecords } from '../api/voucher'
@@ -208,7 +226,30 @@ const alertType = ref('success')
 const voucherDetail = ref(null)
 const todayRecords = ref([])
 const activeScanIndex = ref(-1)
-const verifyResult = reactive({ show: false, discountAmount: 0 })
+const verifyResult = reactive({ show: false, discountAmount: 0, deductAmount: 0, remainingBalance: 0, isStoredValue: false })
+
+const showOrderAmountInput = computed(() => {
+  if (!voucherDetail.value) return false
+  const vt = voucherDetail.value.voucherType
+  if (vt === 'STORED_VALUE') return true
+  if (vt === 'COUPON' && voucherDetail.value.discountType === 'PERCENTAGE') return true
+  return false
+})
+
+const orderAmountPlaceholder = computed(() => {
+  if (voucherDetail.value?.voucherType === 'STORED_VALUE') return '请输入消费金额'
+  return '请输入订单金额'
+})
+
+function typeBadgeClass(voucherType) {
+  const map = { COUPON: 'status-warning', RESOURCE_USAGE: 'status-used', STORED_VALUE: 'status-valid' }
+  return map[voucherType] || 'status-used'
+}
+
+function typeLabel(voucherType) {
+  const map = { COUPON: '优惠券', RESOURCE_USAGE: '因私使用', STORED_VALUE: '储值卡' }
+  return map[voucherType] || voucherType
+}
 
 const recentScans = reactive([])
 
@@ -269,6 +310,8 @@ async function triggerLookup() {
       voucherCode: code,
       voucherType: data.voucherType || 'RESOURCE_USAGE',
       faceValue: data.faceValue,
+      remainingBalance: data.remainingBalance,
+      initialBalance: data.initialBalance,
       discountType: data.discountType,
       discountValue: data.discountValue,
       minOrderAmount: data.minOrderAmount,
@@ -353,25 +396,48 @@ async function handleConfirmVerify() {
     const res = await confirmVerify(code, orderAmount.value)
     const data = res.data || {}
     verifyResult.show = true
-    verifyResult.discountAmount = data.discountAmount || 0
+    const isStored = data.voucherType === 'STORED_VALUE'
+    verifyResult.isStoredValue = isStored
+    if (isStored) {
+      verifyResult.deductAmount = data.deductAmount || 0
+      verifyResult.remainingBalance = data.remainingBalance || 0
+      verifyResult.discountAmount = 0
+    } else {
+      verifyResult.discountAmount = data.discountAmount || 0
+      verifyResult.deductAmount = 0
+      verifyResult.remainingBalance = 0
+    }
 
-    const successMsg = data.discountAmount > 0
-      ? `券码 ${code} 已成功核销，抵扣 ¥${data.discountAmount}`
-      : `券码 ${code} 已成功核销`
+    let successMsg
+    if (isStored) {
+      successMsg = `券码 ${code} 已成功核销，扣减 ¥${data.deductAmount}，剩余 ¥${data.remainingBalance}`
+    } else {
+      successMsg = data.discountAmount > 0
+        ? `券码 ${code} 已成功核销，抵扣 ¥${data.discountAmount}`
+        : `券码 ${code} 已成功核销`
+    }
     showAlert('success', '核销成功', successMsg)
     alertType.value = 'success'
 
     // Update voucher detail status
     if (voucherDetail.value) {
-      voucherDetail.value.status = 'used'
-      voucherDetail.value.statusText = '已核销'
+      voucherDetail.value.status = data.status || 'used'
+      voucherDetail.value.statusText = data.status === 'EXHAUSTED' ? '已用完' : '已核销'
+      if (isStored) {
+        voucherDetail.value.remainingBalance = data.remainingBalance || 0
+      }
     }
 
     // Update recent scan item
     const idx = recentScans.findIndex((s) => s.voucherCode === code)
     if (idx !== -1) {
-      recentScans[idx].status = 'used'
-      recentScans[idx].statusText = '已核销'
+      if (data.status === 'EXHAUSTED') {
+        recentScans[idx].status = 'used'
+        recentScans[idx].statusText = '已用完'
+      } else {
+        recentScans[idx].status = data.status || 'used'
+        recentScans[idx].statusText = data.status === 'ISSUED' ? '有效' : '已核销'
+      }
     }
 
     // Refresh today's records

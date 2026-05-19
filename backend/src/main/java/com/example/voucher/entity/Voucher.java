@@ -55,6 +55,10 @@ public class Voucher {
 
     private BigDecimal faceValue;
 
+    private BigDecimal initialBalance;
+
+    private BigDecimal remainingBalance;
+
     private Long categoryId;
 
     private LocalDateTime createdAt;

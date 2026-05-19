@@ -14,8 +14,8 @@ public class CreateBatchRequest {
     @NotBlank(message = "批次名称不能为空")
     private String batchName;
 
-    @NotBlank(message = "券类型不能为空")
-    private String voucherType;
+    @NotNull(message = "分类不能为空")
+    private Long categoryId;
 
     private String resourceDesc;
 
@@ -33,6 +33,9 @@ public class CreateBatchRequest {
 
     @DecimalMin(value = "0.01", message = "面额上限必须大于0")
     private BigDecimal faceValue;
+
+    @DecimalMin(value = "0.00", message = "赠送金额不能为负")
+    private BigDecimal bonusValue;
 
     private Integer transferable;
 }

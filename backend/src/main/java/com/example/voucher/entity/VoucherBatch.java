@@ -29,6 +29,8 @@ public class VoucherBatch {
 
     private String createdBy;
 
+    private Long categoryId;
+
     private String discountType;
 
     private BigDecimal discountValue;
@@ -36,6 +38,8 @@ public class VoucherBatch {
     private BigDecimal minOrderAmount;
 
     private BigDecimal faceValue;
+
+    private BigDecimal bonusValue;
 
     private Integer transferable;
 

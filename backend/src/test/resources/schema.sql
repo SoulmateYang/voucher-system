@@ -27,6 +27,8 @@ CREATE TABLE voucher_batch (
     discount_value DECIMAL(10,2),
     min_order_amount DECIMAL(10,2),
     face_value DECIMAL(10,2),
+    category_id BIGINT,
+    bonus_value DECIMAL(10,2),
     transferable INT DEFAULT 1,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -53,6 +55,8 @@ CREATE TABLE voucher (
     is_pinned INT DEFAULT 0,
     pinned_at DATETIME,
     face_value DECIMAL(10,2),
+    initial_balance DECIMAL(10,2),
+    remaining_balance DECIMAL(10,2),
     category_id BIGINT,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -66,6 +70,7 @@ CREATE INDEX idx_v_category ON voucher (category_id);
 CREATE TABLE voucher_category (
     id BIGINT PRIMARY KEY,
     name VARCHAR(64) NOT NULL UNIQUE,
+    voucher_type VARCHAR(32) NOT NULL DEFAULT 'COUPON',
     sort_order INT NOT NULL DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -93,6 +98,20 @@ CREATE TABLE audit_log (
     operator_id VARCHAR(64),
     operator_name VARCHAR(64),
     detail TEXT,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE voucher_consumption (
+    id BIGINT PRIMARY KEY,
+    voucher_id BIGINT NOT NULL,
+    voucher_code VARCHAR(32) NOT NULL,
+    consume_amount DECIMAL(10,2) NOT NULL,
+    balance_before DECIMAL(10,2) NOT NULL,
+    balance_after DECIMAL(10,2) NOT NULL,
+    order_amount DECIMAL(10,2),
+    operator_id VARCHAR(64) NOT NULL,
+    operator_name VARCHAR(64),
+    remark VARCHAR(255),
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

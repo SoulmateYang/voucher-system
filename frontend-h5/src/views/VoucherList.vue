@@ -57,7 +57,7 @@
               v-for="item in vouchers"
               :key="item.id"
               class="voucher-card card"
-              :class="{ 'is-coupon': item.voucherType === 'COUPON', 'is-pinned': item.isPinned }"
+              :class="{ 'is-coupon': item.voucherType === 'COUPON', 'is-stored': item.voucherType === 'STORED_VALUE', 'is-pinned': item.isPinned }"
               @click="goToDetail(item.id)"
             >
               <div class="voucher-card-header">
@@ -65,6 +65,10 @@
                   <div v-if="item.voucherType === 'COUPON'" class="coupon-value">
                     <span class="coupon-symbol">¥</span>
                     <span class="coupon-amount">{{ item.faceValue }}</span>
+                  </div>
+                  <div v-else-if="item.voucherType === 'STORED_VALUE'" class="coupon-value stored-value">
+                    <span class="coupon-symbol">¥</span>
+                    <span class="coupon-amount">{{ item.remainingBalance || 0 }}</span>
                   </div>
                   <span class="voucher-card-title">
                     <van-icon v-if="item.isPinned" name="star" size="14" color="#fa8c16" class="pin-icon" />
@@ -138,11 +142,13 @@ const typeOptions = [
   { text: '全部类型', value: '' },
   { text: '资源使用', value: 'RESOURCE_USAGE' },
   { text: '优惠券', value: 'COUPON' },
+  { text: '储值卡', value: 'STORED_VALUE' },
 ];
 
 const STATUS_MAP = {
   ISSUED: { label: '有效', class: 'tag-valid' },
   USED: { label: '已使用', class: 'tag-used' },
+  EXHAUSTED: { label: '已用完', class: 'tag-used' },
   EXPIRED: { label: '已过期', class: 'tag-expired' },
   CANCELLED: { label: '已作废', class: 'tag-revoked' },
 };

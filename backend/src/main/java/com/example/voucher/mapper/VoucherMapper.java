@@ -62,7 +62,7 @@ public interface VoucherMapper extends BaseMapper<Voucher> {
     @Select("<script>" +
         "SELECT v.id, v.batch_id, v.voucher_code, v.holder_id, v.holder_name, " +
         "       v.status, v.issued_at, v.expire_at, v.used_at, v.approve_ref, " +
-        "       v.remark, v.face_value, v.created_at, " +
+        "       v.remark, v.face_value, v.initial_balance, v.remaining_balance, v.created_at, " +
         "       b.batch_name, b.voucher_type, " +
         "       v.category_id, c.name AS category_name " +
         "FROM voucher v " +

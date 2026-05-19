@@ -25,7 +25,7 @@ public class VoucherCategoryService {
         );
     }
 
-    public VoucherCategory create(String name) {
+    public VoucherCategory create(String name, String voucherType) {
         LambdaQueryWrapper<VoucherCategory> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(VoucherCategory::getName, name);
         if (categoryMapper.selectCount(wrapper) > 0) {
@@ -33,6 +33,7 @@ public class VoucherCategoryService {
         }
         VoucherCategory category = new VoucherCategory();
         category.setName(name);
+        category.setVoucherType(voucherType);
         long maxOrder = categoryMapper.selectList(
             new LambdaQueryWrapper<VoucherCategory>()
                 .orderByDesc(VoucherCategory::getSortOrder)
@@ -46,7 +47,7 @@ public class VoucherCategoryService {
         return category;
     }
 
-    public VoucherCategory update(Long id, String name) {
+    public VoucherCategory update(Long id, String name, String voucherType) {
         VoucherCategory category = categoryMapper.selectById(id);
         if (category == null) {
             throw new BusinessException("分类不存在");
@@ -57,6 +58,7 @@ public class VoucherCategoryService {
             throw new BusinessException("分类名称已存在");
         }
         category.setName(name);
+        category.setVoucherType(voucherType);
         categoryMapper.updateById(category);
         return category;
     }

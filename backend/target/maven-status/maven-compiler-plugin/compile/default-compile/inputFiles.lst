@@ -32,6 +32,7 @@ D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\vouche
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\mapper\VoucherGiftMapper.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\IssueVoucherRequest.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\common\JwtUtil.java
+D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\mapper\VoucherConsumptionMapper.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\controller\AuthController.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\ManualVoucherRequest.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\service\ReportService.java
@@ -43,6 +44,7 @@ D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\vouche
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\VerificationLog.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\config\JacksonConfig.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\CreateBatchRequest.java
+D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\VoucherConsumption.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\dto\UpdateEmployeeRequest.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\mapper\SysUserMapper.java
 D:\work\projectTest\card-voucher-system\backend\src\main\java\com\example\voucher\entity\VoucherCategory.java

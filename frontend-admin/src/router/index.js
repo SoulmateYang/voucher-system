@@ -53,6 +53,12 @@ const routes = [
         component: () => import('../views/CategoryManage.vue'),
         meta: { title: '分类管理' },
       },
+      {
+        path: 'consumption/:voucherId',
+        name: 'ConsumptionHistory',
+        component: () => import('../views/ConsumptionHistory.vue'),
+        meta: { title: '消费明细' },
+      },
     ],
   },
 ]

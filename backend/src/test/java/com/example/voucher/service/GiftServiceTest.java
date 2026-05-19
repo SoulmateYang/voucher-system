@@ -5,9 +5,11 @@ import com.example.voucher.dto.CreateBatchRequest;
 import com.example.voucher.dto.IssueVoucherRequest;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherBatch;
+import com.example.voucher.entity.VoucherCategory;
 import com.example.voucher.entity.SysUser;
 import com.example.voucher.mapper.SysUserMapper;
 import com.example.voucher.mapper.VoucherBatchMapper;
+import com.example.voucher.mapper.VoucherCategoryMapper;
 import com.example.voucher.mapper.VoucherGiftMapper;
 import com.example.voucher.mapper.VoucherMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,14 +46,17 @@ class GiftServiceTest {
     private VoucherGiftMapper giftMapper;
 
     @Autowired
+    private VoucherCategoryMapper categoryMapper;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     private Long giftId;
+    private Long resourceCategoryId;
 
     private void ensureUser(Long id, String username, String realName) {
         SysUser existing = userMapper.selectById(id);
         if (existing == null) {
-            // Check if username taken by another user (from other test classes)
             SysUser byName = userMapper.selectOne(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<SysUser>()
                     .eq(SysUser::getUsername, username));
@@ -75,6 +80,15 @@ class GiftServiceTest {
         giftMapper.delete(null);
         voucherMapper.delete(null);
         batchMapper.delete(null);
+        categoryMapper.delete(null);
+
+        // Create category for resource usage
+        VoucherCategory cat = new VoucherCategory();
+        cat.setName("因私使用分类");
+        cat.setVoucherType("RESOURCE_USAGE");
+        cat.setSortOrder(1);
+        categoryMapper.insert(cat);
+        resourceCategoryId = cat.getId();
 
         // Create test users
         ensureUser(10L, "E001", "张三");
@@ -84,7 +98,7 @@ class GiftServiceTest {
         // Create batch and issue voucher
         CreateBatchRequest req = new CreateBatchRequest();
         req.setBatchName("gift-test");
-        req.setVoucherType("RESOURCE_USAGE");
+        req.setCategoryId(resourceCategoryId);
         req.setValidDays(30);
         req.setTransferable(1);
         VoucherBatch batch = batchService.create(req, "admin");
@@ -120,7 +134,7 @@ class GiftServiceTest {
     void gift_shouldThrowForNonTransferableVoucher() {
         CreateBatchRequest req = new CreateBatchRequest();
         req.setBatchName("non-transferable");
-        req.setVoucherType("RESOURCE_USAGE");
+        req.setCategoryId(resourceCategoryId);
         req.setValidDays(30);
         req.setTransferable(0);
         VoucherBatch batch = batchService.create(req, "admin");
@@ -208,7 +222,7 @@ class GiftServiceTest {
         // Create a voucher that was never gifted
         CreateBatchRequest req = new CreateBatchRequest();
         req.setBatchName("never-gifted");
-        req.setVoucherType("RESOURCE_USAGE");
+        req.setCategoryId(resourceCategoryId);
         req.setValidDays(30);
         VoucherBatch batch = batchService.create(req, "admin");
 

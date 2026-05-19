@@ -21,8 +21,8 @@
         <el-table-column prop="batchName" label="名称" min-width="140" />
         <el-table-column prop="voucherType" label="券类型" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.voucherType === 'COUPON' ? 'warning' : ''" size="small">
-              {{ row.voucherType === 'COUPON' ? '优惠券' : '因私使用' }}
+            <el-tag :type="batchTypeTag(row.voucherType)" size="small">
+              {{ batchTypeLabel(row.voucherType) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -88,16 +88,20 @@
         :rules="createRules"
         label-position="top"
       >
-        <el-form-item label="券类型" prop="voucherType">
-          <el-radio-group v-model="createForm.voucherType">
-            <el-radio value="RESOURCE_USAGE">因私使用</el-radio>
-            <el-radio value="COUPON">优惠券</el-radio>
-          </el-radio-group>
+        <el-form-item label="分类" prop="categoryId">
+          <el-select v-model="createForm.categoryId" placeholder="请选择分类" style="width: 100%" @change="onCategoryChange">
+            <el-option
+              v-for="cat in categoryList"
+              :key="cat.id"
+              :label="`${cat.name}（${typeLabel(cat.voucherType)}）`"
+              :value="cat.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="批次名称" prop="name">
           <el-input v-model="createForm.name" placeholder="请输入批次名称" maxlength="50" />
         </el-form-item>
-        <el-form-item v-if="createForm.voucherType === 'RESOURCE_USAGE'" label="资源描述" prop="resourceDesc">
+        <el-form-item v-if="selectedCategoryType === 'RESOURCE_USAGE'" label="资源描述" prop="resourceDesc">
           <el-input
             v-model="createForm.resourceDesc"
             type="textarea"
@@ -115,7 +119,7 @@
           />
           <span class="form-hint">天（从发放之日起计算）</span>
         </el-form-item>
-        <template v-if="createForm.voucherType === 'COUPON'">
+        <template v-if="selectedCategoryType === 'COUPON'">
           <el-form-item label="折扣类型" prop="discountType">
             <el-radio-group v-model="createForm.discountType">
               <el-radio value="FIXED_AMOUNT">满减</el-radio>
@@ -152,6 +156,26 @@
             <span class="form-hint">元（0表示无门槛）</span>
           </el-form-item>
         </template>
+        <template v-if="selectedCategoryType === 'STORED_VALUE'">
+          <el-form-item label="充值金额" prop="faceValue">
+            <el-input-number
+              v-model="createForm.faceValue"
+              :min="0.01"
+              :precision="2"
+              controls-position="right"
+            />
+            <span class="form-hint">元</span>
+          </el-form-item>
+          <el-form-item label="赠送金额">
+            <el-input-number
+              v-model="createForm.bonusValue"
+              :min="0"
+              :precision="2"
+              controls-position="right"
+            />
+            <span class="form-hint">元（0表示无赠送）</span>
+          </el-form-item>
+        </template>
         <el-form-item label="可转赠">
           <el-switch v-model="createForm.transferable" :active-value="1" :inactive-value="0" />
         </el-form-item>
@@ -175,10 +199,14 @@
       <template v-if="currentBatch">
         <p class="issue-batch-info">
           批次：<strong>{{ currentBatch.batchName }}</strong>
-          <el-tag v-if="currentBatch.voucherType === 'COUPON'" type="warning" size="small" style="margin-left: 8px">优惠券</el-tag>
+          <el-tag :type="batchTypeTag(currentBatch.voucherType)" size="small" style="margin-left: 8px">{{ batchTypeLabel(currentBatch.voucherType) }}</el-tag>
           <span v-if="currentBatch.voucherType === 'COUPON' && currentBatch.discountType" style="margin-left: 8px; font-size: 12px; color: #969799">
             {{ currentBatch.discountType === 'FIXED_AMOUNT' ? `满减 ¥${currentBatch.discountValue}` : `${currentBatch.discountValue}%折扣` }}
             <template v-if="currentBatch.minOrderAmount > 0"> · 满¥{{ currentBatch.minOrderAmount }}可用</template>
+          </span>
+          <span v-if="currentBatch.voucherType === 'STORED_VALUE'" style="margin-left: 8px; font-size: 12px; color: #969799">
+            充值 ¥{{ currentBatch.faceValue }}
+            <template v-if="currentBatch.bonusValue > 0"> · 送 ¥{{ currentBatch.bonusValue }}</template>
           </span>
         </p>
 
@@ -319,6 +347,7 @@ import { Plus } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import { getBatchList, createBatch, issueVouchers, getVouchersByBatch } from '../api/batch'
 import { getEmployeeList } from '../api/employee'
+import { getCategoryList } from '../api/category'
 import QRCode from 'qrcode'
 
 // ==================== Batch List ====================
@@ -327,6 +356,36 @@ const tableLoading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const categoryList = ref([])
+const selectedCategoryType = ref('')
+
+function batchTypeTag(voucherType) {
+  const map = { COUPON: 'warning', RESOURCE_USAGE: '', STORED_VALUE: 'success' }
+  return map[voucherType] || ''
+}
+
+function batchTypeLabel(voucherType) {
+  const map = { COUPON: '优惠券', RESOURCE_USAGE: '因私使用', STORED_VALUE: '储值卡' }
+  return map[voucherType] || voucherType
+}
+
+function typeLabel(voucherType) {
+  return batchTypeLabel(voucherType)
+}
+
+function onCategoryChange(categoryId) {
+  const cat = categoryList.value.find(c => c.id === categoryId)
+  selectedCategoryType.value = cat ? cat.voucherType : ''
+}
+
+async function loadCategories() {
+  try {
+    const res = await getCategoryList()
+    categoryList.value = res.data || []
+  } catch {
+    // handled by interceptor
+  }
+}
 
 async function fetchBatchList() {
   tableLoading.value = true
@@ -366,23 +425,24 @@ const createLoading = ref(false)
 
 const createForm = reactive({
   name: '',
-  voucherType: 'RESOURCE_USAGE',
+  categoryId: null,
   resourceDesc: '',
   validDays: 30,
   discountType: 'FIXED_AMOUNT',
   discountValue: null,
   minOrderAmount: null,
   faceValue: null,
+  bonusValue: null,
   transferable: 1,
 })
 
 const createRules = {
   name: [{ required: true, message: '请输入批次名称', trigger: 'blur' }],
-  voucherType: [{ required: true, message: '请选择券类型', trigger: 'change' }],
+  categoryId: [{ required: true, message: '请选择分类', trigger: 'change' }],
   resourceDesc: [
     {
       validator: (rule, value, callback) => {
-        if (createForm.voucherType === 'RESOURCE_USAGE' && !value) {
+        if (selectedCategoryType.value === 'RESOURCE_USAGE' && !value) {
           callback(new Error('请输入资源描述'))
         } else {
           callback()
@@ -396,7 +456,7 @@ const createRules = {
     {
       required: true,
       validator: (rule, value, callback) => {
-        if (createForm.voucherType === 'COUPON' && !value) {
+        if (selectedCategoryType.value === 'COUPON' && !value) {
           callback(new Error('请选择折扣类型'))
         } else {
           callback()
@@ -409,7 +469,7 @@ const createRules = {
     {
       required: true,
       validator: (rule, value, callback) => {
-        if (createForm.voucherType === 'COUPON' && (!value || value <= 0)) {
+        if (selectedCategoryType.value === 'COUPON' && (!value || value <= 0)) {
           callback(new Error('请输入优惠金额'))
         } else {
           callback()
@@ -432,18 +492,22 @@ async function handleCreateBatch() {
   try {
     const payload = {
       batchName: createForm.name,
-      voucherType: createForm.voucherType,
+      categoryId: createForm.categoryId,
       resourceDesc: createForm.resourceDesc,
       validDays: createForm.validDays,
       transferable: createForm.transferable,
     }
-    if (createForm.voucherType === 'COUPON') {
+    if (selectedCategoryType.value === 'COUPON') {
       payload.discountType = createForm.discountType
       payload.discountValue = createForm.discountValue
       payload.minOrderAmount = createForm.minOrderAmount
       if (createForm.discountType === 'PERCENTAGE') {
         payload.faceValue = createForm.faceValue
       }
+    }
+    if (selectedCategoryType.value === 'STORED_VALUE') {
+      payload.faceValue = createForm.faceValue
+      payload.bonusValue = createForm.bonusValue || 0
     }
     await createBatch(payload)
     ElMessage.success('批次创建成功')
@@ -459,14 +523,16 @@ async function handleCreateBatch() {
 
 function resetCreateForm() {
   createForm.name = ''
-  createForm.voucherType = 'RESOURCE_USAGE'
+  createForm.categoryId = null
   createForm.resourceDesc = ''
   createForm.validDays = 30
   createForm.discountType = 'FIXED_AMOUNT'
   createForm.discountValue = null
   createForm.minOrderAmount = null
   createForm.faceValue = null
+  createForm.bonusValue = null
   createForm.transferable = 1
+  selectedCategoryType.value = ''
 }
 
 // ==================== Issue Vouchers ====================
@@ -634,6 +700,7 @@ function statusClass(status) {
   const map = {
     ISSUED: 'valid',
     USED: 'used',
+    EXHAUSTED: 'expired',
     EXPIRED: 'expired',
     CANCELLED: 'cancelled',
   }
@@ -644,6 +711,7 @@ function statusText(status) {
   const map = {
     ISSUED: '有效',
     USED: '已核销',
+    EXHAUSTED: '已用完',
     EXPIRED: '已过期',
     CANCELLED: '已作废',
   }
@@ -652,6 +720,7 @@ function statusText(status) {
 
 // ==================== Init ====================
 onMounted(() => {
+  loadCategories()
   fetchBatchList()
 })
 </script>

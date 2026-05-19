@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.voucher.common.BusinessException;
 import com.example.voucher.common.VoucherCodeUtil;
+import com.example.voucher.common.VoucherType;
 import com.example.voucher.dto.IssueVoucherRequest;
 import com.example.voucher.dto.VoucherListRow;
 import com.example.voucher.entity.AuditLog;
@@ -13,10 +14,12 @@ import com.example.voucher.entity.VerificationLog;
 import com.example.voucher.entity.Voucher;
 import com.example.voucher.entity.VoucherBatch;
 import com.example.voucher.entity.VoucherCategory;
+import com.example.voucher.entity.VoucherConsumption;
 import com.example.voucher.mapper.AuditLogMapper;
 import com.example.voucher.mapper.VerificationLogMapper;
 import com.example.voucher.mapper.VoucherBatchMapper;
 import com.example.voucher.mapper.VoucherCategoryMapper;
+import com.example.voucher.mapper.VoucherConsumptionMapper;
 import com.example.voucher.mapper.VoucherMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DuplicateKeyException;
@@ -39,6 +42,7 @@ public class VoucherService {
     private final AuditLogMapper auditLogMapper;
     private final VoucherBatchMapper batchMapper;
     private final VoucherCategoryMapper categoryMapper;
+    private final VoucherConsumptionMapper consumptionMapper;
     private final VoucherCodeUtil voucherCodeUtil;
 
     public Map<String, Object> lookup(String voucherCode) {
@@ -75,12 +79,17 @@ public class VoucherService {
         result.put("validity", voucher.getExpireAt().toString());
         result.put("status", "valid");
         result.put("faceValue", voucher.getFaceValue());
+        result.put("initialBalance", voucher.getInitialBalance());
+        result.put("remainingBalance", voucher.getRemainingBalance());
         if (batch != null) {
             result.put("voucherType", batch.getVoucherType());
             if ("COUPON".equals(batch.getVoucherType())) {
                 result.put("discountType", batch.getDiscountType());
                 result.put("discountValue", batch.getDiscountValue());
                 result.put("minOrderAmount", batch.getMinOrderAmount());
+            }
+            if ("STORED_VALUE".equals(batch.getVoucherType())) {
+                result.put("bonusValue", batch.getBonusValue());
             }
         } else {
             result.put("voucherType", "RESOURCE_USAGE");
@@ -97,6 +106,9 @@ public class VoucherService {
         }
         if ("USED".equals(voucher.getStatus())) {
             throw new BusinessException(4001, "该券已被核销");
+        }
+        if ("EXHAUSTED".equals(voucher.getStatus())) {
+            throw new BusinessException(4001, "该券已用完");
         }
         if ("EXPIRED".equals(voucher.getStatus())) {
             throw new BusinessException(4002, "该券已过期");
@@ -119,7 +131,12 @@ public class VoucherService {
         }
         String voucherType = batch != null ? batch.getVoucherType() : "RESOURCE_USAGE";
 
-        // Coupon-specific validation (only when batch exists)
+        // Stored-value card verification
+        if (VoucherType.isStoredValue(voucherType)) {
+            return verifyStoredValue(voucher, operatorId, operatorName, orderAmount);
+        }
+
+        // Coupon-specific validation
         if (batch != null && "COUPON".equals(voucherType)) {
             if ("PERCENTAGE".equals(batch.getDiscountType()) && orderAmount == null) {
                 throw new BusinessException(4005, "请输入订单金额");
@@ -181,6 +198,66 @@ public class VoucherService {
             }
         }
         result.put("discountAmount", discountAmount);
+        return result;
+    }
+
+    private Map<String, Object> verifyStoredValue(Voucher voucher, String operatorId,
+                                                   String operatorName, BigDecimal orderAmount) {
+        if (orderAmount == null || orderAmount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BusinessException(4005, "请输入消费金额");
+        }
+        BigDecimal remaining = voucher.getRemainingBalance();
+        if (remaining == null || remaining.compareTo(orderAmount) < 0) {
+            throw new BusinessException(4005,
+                String.format("余额不足，当前余额 %.2f 元", remaining != null ? remaining : BigDecimal.ZERO));
+        }
+
+        BigDecimal balanceBefore = remaining;
+        BigDecimal balanceAfter = remaining.subtract(orderAmount);
+        boolean exhausted = balanceAfter.compareTo(BigDecimal.ZERO) == 0;
+
+        voucher.setRemainingBalance(balanceAfter);
+        if (exhausted) {
+            voucher.setStatus("EXHAUSTED");
+            voucher.setUsedAt(LocalDateTime.now());
+        }
+        int updated = voucherMapper.update(voucher,
+            new LambdaUpdateWrapper<Voucher>()
+                .eq(Voucher::getId, voucher.getId())
+                .eq(Voucher::getVersion, voucher.getVersion())
+        );
+        if (updated == 0) {
+            throw new BusinessException(4001, "该券核销冲突，请重试");
+        }
+
+        VoucherConsumption consumption = new VoucherConsumption();
+        consumption.setVoucherId(voucher.getId());
+        consumption.setVoucherCode(voucher.getVoucherCode());
+        consumption.setConsumeAmount(orderAmount);
+        consumption.setBalanceBefore(balanceBefore);
+        consumption.setBalanceAfter(balanceAfter);
+        consumption.setOrderAmount(orderAmount);
+        consumption.setOperatorId(operatorId);
+        consumption.setOperatorName(operatorName);
+        consumption.setCreatedAt(LocalDateTime.now());
+        consumptionMapper.insert(consumption);
+
+        writeAudit("voucher", voucher.getId(), "VERIFY", operatorId, operatorName,
+            Map.of("voucherCode", voucher.getVoucherCode(),
+                   "holderName", voucher.getHolderName(),
+                   "consumeAmount", orderAmount.toString(),
+                   "balanceAfter", balanceAfter.toString(),
+                   "exhausted", String.valueOf(exhausted))
+        );
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("voucherCode", voucher.getVoucherCode());
+        result.put("holderName", voucher.getHolderName());
+        result.put("voucherType", "STORED_VALUE");
+        result.put("deductAmount", orderAmount);
+        result.put("remainingBalance", balanceAfter);
+        result.put("status", exhausted ? "EXHAUSTED" : "ISSUED");
+        result.put("verifiedAt", LocalDateTime.now().toString());
         return result;
     }
 
@@ -270,6 +347,15 @@ public class VoucherService {
             }
         }
 
+        if ("STORED_VALUE".equals(batch.getVoucherType())) {
+            java.math.BigDecimal face = batch.getFaceValue() != null ? batch.getFaceValue() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal bonus = batch.getBonusValue() != null ? batch.getBonusValue() : java.math.BigDecimal.ZERO;
+            java.math.BigDecimal total = face.add(bonus);
+            voucher.setFaceValue(total);
+            voucher.setInitialBalance(total);
+            voucher.setRemainingBalance(total);
+        }
+
         for (int i = 0; i < 3; i++) {
             voucher.setVoucherCode(voucherCodeUtil.generate());
             try {
@@ -308,11 +394,14 @@ public class VoucherService {
         result.put("transferable", voucher.getTransferable());
         result.put("isFavorite", voucher.getIsFavorite());
         result.put("isPinned", voucher.getIsPinned());
+        result.put("initialBalance", voucher.getInitialBalance());
+        result.put("remainingBalance", voucher.getRemainingBalance());
         if (batch != null) {
             result.put("voucherType", batch.getVoucherType());
             result.put("discountType", batch.getDiscountType());
             result.put("discountValue", batch.getDiscountValue());
             result.put("minOrderAmount", batch.getMinOrderAmount());
+            result.put("bonusValue", batch.getBonusValue());
         }
         return result;
     }
@@ -391,6 +480,8 @@ public class VoucherService {
             item.put("approveRef", v.getApproveRef());
             item.put("remark", v.getRemark());
             item.put("faceValue", v.getFaceValue());
+            item.put("initialBalance", v.getInitialBalance());
+            item.put("remainingBalance", v.getRemainingBalance());
             item.put("isFavorite", v.getIsFavorite());
             item.put("isPinned", v.getIsPinned());
             item.put("source", v.getSource());
@@ -549,6 +640,7 @@ public class VoucherService {
             if (category == null) {
                 throw new BusinessException("分类不存在");
             }
+            validateCategoryTypeMatch(voucher, category);
         }
         voucher.setCategoryId(categoryId);
         voucher.setUpdatedAt(LocalDateTime.now());
@@ -567,7 +659,28 @@ public class VoucherService {
             if (category == null) {
                 throw new BusinessException("分类不存在");
             }
+            // Validate all selected vouchers match category type
+            Set<Long> batchIds = voucherMapper.selectBatchIds(voucherIds).stream()
+                .map(Voucher::getBatchId)
+                .collect(java.util.stream.Collectors.toSet());
+            if (!batchIds.isEmpty()) {
+                java.util.List<VoucherBatch> batches = batchMapper.selectBatchIds(batchIds);
+                for (VoucherBatch b : batches) {
+                    if (!category.getVoucherType().equals(b.getVoucherType())) {
+                        throw new BusinessException("存在券类型与分类类型不匹配");
+                    }
+                }
+            }
         }
         return voucherMapper.batchUpdateCategory(voucherIds, categoryId);
+    }
+
+    private void validateCategoryTypeMatch(Voucher voucher, VoucherCategory category) {
+        if (voucher.getBatchId() != null) {
+            VoucherBatch batch = batchMapper.selectById(voucher.getBatchId());
+            if (batch != null && !category.getVoucherType().equals(batch.getVoucherType())) {
+                throw new BusinessException("券类型与分类类型不匹配");
+            }
+        }
     }
 }

@@ -46,11 +46,17 @@
             <span>离线模式 — 显示缓存数据</span>
           </div>
         <!-- Status + resource name -->
-        <div class="voucher-header card" :class="{ 'is-coupon': voucher.voucherType === 'COUPON' }">
+        <div class="voucher-header card" :class="{ 'is-coupon': voucher.voucherType === 'COUPON', 'is-stored': voucher.voucherType === 'STORED_VALUE' }">
           <!-- Coupon face value display -->
           <div v-if="voucher.voucherType === 'COUPON'" class="coupon-value-block">
             <span class="coupon-symbol">¥</span>
             <span class="coupon-amount">{{ voucher.faceValue || 0 }}</span>
+          </div>
+          <!-- Stored value balance display -->
+          <div v-else-if="voucher.voucherType === 'STORED_VALUE'" class="coupon-value-block stored-value-block">
+            <span class="coupon-symbol">¥</span>
+            <span class="coupon-amount">{{ voucher.remainingBalance || 0 }}</span>
+            <span class="stored-label">剩余余额</span>
           </div>
           <van-tag
             :class="statusTagClass(voucher.status)"
@@ -100,6 +106,24 @@
           <div v-else class="info-row">
             <span class="info-label">使用条件</span>
             <span class="info-value">无门槛</span>
+          </div>
+        </div>
+
+        <!-- Stored value card info -->
+        <div v-if="voucher.voucherType === 'STORED_VALUE'" class="info-card card stored-info-card">
+          <div class="info-row">
+            <span class="info-label">初始余额</span>
+            <span class="info-value">¥{{ voucher.initialBalance || 0 }}</span>
+          </div>
+          <div class="info-divider" />
+          <div class="info-row">
+            <span class="info-label">赠送金额</span>
+            <span class="info-value">¥{{ voucher.bonusValue || 0 }}</span>
+          </div>
+          <div class="info-divider" />
+          <div class="info-row">
+            <span class="info-label">剩余余额</span>
+            <span class="info-value stored-balance">¥{{ voucher.remainingBalance || 0 }}</span>
           </div>
         </div>
 
@@ -177,6 +201,7 @@ const qrRef = ref(null);
 const STATUS_MAP = {
   ISSUED: { label: '有效', class: 'tag-valid' },
   USED: { label: '已使用', class: 'tag-used' },
+  EXHAUSTED: { label: '已用完', class: 'tag-used' },
   EXPIRED: { label: '已过期', class: 'tag-expired' },
   CANCELLED: { label: '已作废', class: 'tag-revoked' },
 };

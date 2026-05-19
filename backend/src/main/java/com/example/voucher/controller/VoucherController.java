@@ -23,6 +23,7 @@ public class VoucherController {
     private final VoucherService voucherService;
     private final ReportService reportService;
     private final com.example.voucher.service.AuthService authService;
+    private final com.example.voucher.mapper.VoucherConsumptionMapper consumptionMapper;
 
     @PostMapping("/lookup")
     public Result<Object> lookup(@RequestBody Map<String, String> body) {
@@ -95,7 +96,12 @@ public class VoucherController {
 
     @GetMapping("/{id}")
     public Result<Object> getById(@PathVariable Long id) {
-        return Result.success(voucherService.getById(id));
+        return Result.success(voucherService.getDetailById(id));
+    }
+
+    @GetMapping("/{id}/consumptions")
+    public Result<Object> getConsumptions(@PathVariable Long id) {
+        return Result.success(consumptionMapper.selectByVoucherId(id));
     }
 
     @GetMapping("/report")

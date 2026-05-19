@@ -18,6 +18,8 @@ public class VoucherCategory {
 
     private Integer sortOrder;
 
+    private String voucherType;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
