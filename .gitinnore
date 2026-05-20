@@ -1,11 +1,9 @@
 # 依赖目录
-/frontend-admin/node_modules
-/frontend-h5/node_modules
+/node_modules
 
 # 打包产物
-/frontend-h5/dist
-/frontend-admin/dist
-/backend/target
+/dist
+/target
 
 # 编辑器
 .idea
