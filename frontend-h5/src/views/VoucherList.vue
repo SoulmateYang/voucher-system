@@ -240,7 +240,7 @@ onMounted(() => { fetchVouchers(true); });
 </script>
 
 <style scoped>
-.voucher-list-page { min-height: 100vh; background: var(--color-bg); }
+.voucher-list-page { min-height: 100vh; background: var(--color-bg); padding-bottom: 50px; }
 
 .search-bar {
   background: var(--color-card);

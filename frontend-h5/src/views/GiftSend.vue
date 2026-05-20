@@ -109,6 +109,7 @@ onMounted(() => {
 .gift-send-page {
   min-height: 100vh;
   background: var(--color-bg);
+  padding-bottom: 50px;
 }
 
 .gift-content {

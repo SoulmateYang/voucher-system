@@ -3,6 +3,7 @@ package com.example.voucher.service;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.voucher.common.BusinessException;
 import com.example.voucher.common.VoucherCodeUtil;
@@ -682,5 +683,85 @@ public class VoucherService {
                 throw new BusinessException("券类型与分类类型不匹配");
             }
         }
+    }
+
+    public List<com.example.voucher.dto.VoucherUsageRecord> getUsageRecords(String holderId) {
+        List<com.example.voucher.dto.VoucherUsageRecord> records = new java.util.ArrayList<>();
+
+        var verifications = verificationLogMapper.selectList(
+            Wrappers.<VerificationLog>lambdaQuery()
+                .eq(VerificationLog::getHolderId, holderId)
+                .orderByDesc(VerificationLog::getVerifiedAt)
+        );
+        for (var v : verifications) {
+            records.add(com.example.voucher.dto.VoucherUsageRecord.builder()
+                .id(v.getId())
+                .voucherId(v.getVoucherId())
+                .voucherCode(v.getVoucherCode())
+                .type("VERIFICATION")
+                .amount(null)
+                .operatorName(v.getOperatorName())
+                .remark(v.getRemark())
+                .createdAt(v.getVerifiedAt())
+                .build());
+        }
+
+        var voucherIds = voucherMapper.selectList(
+            Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getHolderId, holderId)
+                .select(Voucher::getId)
+        ).stream().map(Voucher::getId).toList();
+
+        if (!voucherIds.isEmpty()) {
+            var consumptions = consumptionMapper.selectList(
+                Wrappers.<VoucherConsumption>lambdaQuery()
+                    .in(VoucherConsumption::getVoucherId, voucherIds)
+                    .orderByDesc(VoucherConsumption::getCreatedAt)
+            );
+            for (var c : consumptions) {
+                records.add(com.example.voucher.dto.VoucherUsageRecord.builder()
+                    .id(c.getId())
+                    .voucherId(c.getVoucherId())
+                    .voucherCode(c.getVoucherCode())
+                    .type("CONSUMPTION")
+                    .amount(c.getConsumeAmount())
+                    .operatorName(c.getOperatorName())
+                    .remark(c.getRemark())
+                    .createdAt(c.getCreatedAt())
+                    .build());
+            }
+        }
+
+        records.sort((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()));
+        return records;
+    }
+
+    public Map<String, Object> getExpiringSoon(String holderId) {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime sevenDaysLater = now.plusDays(7);
+
+        var vouchers = voucherMapper.selectList(
+            Wrappers.<Voucher>lambdaQuery()
+                .eq(Voucher::getHolderId, holderId)
+                .eq(Voucher::getStatus, "ISSUED")
+                .gt(Voucher::getExpireAt, now)
+                .le(Voucher::getExpireAt, sevenDaysLater)
+                .orderByAsc(Voucher::getExpireAt)
+        );
+
+        List<Map<String, Object>> list = new java.util.ArrayList<>();
+        for (var v : vouchers) {
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("id", v.getId());
+            item.put("voucherCode", v.getVoucherCode());
+            item.put("remark", v.getRemark());
+            item.put("expireAt", v.getExpireAt());
+            list.add(item);
+        }
+
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("count", list.size());
+        result.put("vouchers", list);
+        return result;
     }
 }

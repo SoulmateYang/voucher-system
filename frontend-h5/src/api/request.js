@@ -4,7 +4,7 @@ import { showFailToast } from 'vant';
 const TOKEN_KEY = 'card_voucher_token';
 
 const request = axios.create({
-  baseURL: '/api/v1',
+  baseURL: import.meta.env.VITE_API_BASE_URL || '/api/v1',
   timeout: 15000,
   headers: {
     'Content-Type': 'application/json',

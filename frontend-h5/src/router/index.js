@@ -54,6 +54,30 @@ const routes = [
     component: () => import('../views/ManualAdd.vue'),
     meta: { requiresAuth: true },
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('../views/Profile.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/edit-profile',
+    name: 'EditProfile',
+    component: () => import('../views/EditProfile.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/change-password',
+    name: 'ChangePassword',
+    component: () => import('../views/ChangePassword.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/usage-records',
+    name: 'UsageRecords',
+    component: () => import('../views/UsageRecords.vue'),
+    meta: { requiresAuth: true },
+  },
 ];
 
 const router = createRouter({

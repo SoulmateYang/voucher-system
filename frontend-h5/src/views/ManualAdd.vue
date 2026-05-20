@@ -145,6 +145,7 @@ function goBack() { router.back(); }
 .manual-add-page {
   min-height: 100vh;
   background: var(--color-bg);
+  padding-bottom: 50px;
 }
 
 .form-content {

@@ -46,8 +46,8 @@
 <script setup>
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { showSuccessToast, showFailToast } from 'vant';
-import { login } from '../api/voucher';
+import { showSuccessToast, showFailToast, showDialog } from 'vant';
+import { login, getExpiringSoon } from '../api/voucher';
 import { setToken } from '../api/request';
 
 const router = useRouter();
@@ -79,6 +79,21 @@ async function handleLogin() {
     if (token) {
       setToken(token);
       showSuccessToast('登录成功');
+
+      try {
+        const reminder = await getExpiringSoon();
+        const count = reminder?.data?.count || 0;
+        if (count > 0) {
+          await showDialog({
+            title: '卡券到期提醒',
+            message: `${count}张卡券将在7天内过期，请及时使用`,
+            confirmButtonText: '我知道了',
+          });
+        }
+      } catch {
+        // 到期查询失败不阻断登录流程
+      }
+
       await router.replace({ name: 'VoucherList' });
     } else {
       showFailToast('登录失败，未获取到凭证');

@@ -90,4 +90,18 @@ public class EmployeeVoucherController {
         }
         return Result.success(giftService.getGiftRecordsByVoucherId(id));
     }
+
+    @GetMapping("/usage-records")
+    public Result<Object> usageRecords(Authentication auth) {
+        var user = authService.getCurrentUser(auth.getName());
+        String holderId = user != null ? user.getUsername() : auth.getName();
+        return Result.success(voucherService.getUsageRecords(holderId));
+    }
+
+    @GetMapping("/expiring-soon")
+    public Result<Object> expiringSoon(Authentication auth) {
+        var user = authService.getCurrentUser(auth.getName());
+        String holderId = user != null ? user.getUsername() : auth.getName();
+        return Result.success(voucherService.getExpiringSoon(holderId));
+    }
 }

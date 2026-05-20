@@ -159,6 +159,7 @@ onMounted(() => {
 <style scoped>
 .gift-inbox-page {
   min-height: 100vh;
+  padding-bottom: 50px;
   background: var(--color-bg);
 }
 

@@ -77,3 +77,28 @@ export function addManualVoucher(data) {
 export function getGiftRecords(voucherId) {
   return request.get(`/vouchers/my/${voucherId}/gift-records`);
 }
+
+/** 获取当前用户信息 */
+export function getProfile() {
+  return request.get('/auth/me');
+}
+
+/** 更新当前用户个人信息 */
+export function updateProfile(data) {
+  return request.put('/auth/me', data);
+}
+
+/** 修改密码 */
+export function changePassword(data) {
+  return request.post('/auth/change-password', data);
+}
+
+/** 获取卡券使用记录 */
+export function getUsageRecords() {
+  return request.get('/vouchers/my/usage-records');
+}
+
+/** 获取即将到期的卡券 */
+export function getExpiringSoon() {
+  return request.get('/vouchers/my/expiring-soon');
+}

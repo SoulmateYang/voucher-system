@@ -18,7 +18,9 @@ com\example\voucher\mapper\AuditLogMapper.class
 com\example\voucher\scheduled\VoucherExpireTask.class
 com\example\voucher\service\ReportService.class
 com\example\voucher\entity\AuditLog.class
+com\example\voucher\dto\UpdateMeRequest.class
 com\example\voucher\dto\UpdateEmployeeRequest.class
+com\example\voucher\dto\VoucherUsageRecord.class
 com\example\voucher\entity\VoucherBatch.class
 com\example\voucher\config\SecurityConfig.class
 com\example\voucher\common\BusinessException.class
@@ -26,6 +28,7 @@ com\example\voucher\common\GlobalExceptionHandler.class
 com\example\voucher\common\VoucherCodeUtil.class
 com\example\voucher\dto\CreateEmployeeRequest.class
 com\example\voucher\controller\VoucherController.class
+com\example\voucher\dto\VoucherUsageRecord$VoucherUsageRecordBuilder.class
 com\example\voucher\entity\AuditLog$AuditLogBuilder.class
 com\example\voucher\controller\EmployeeVoucherController.class
 com\example\voucher\controller\CategoryController.class
@@ -33,6 +36,7 @@ com\example\voucher\mapper\VoucherCategoryMapper.class
 com\example\voucher\mapper\VerificationLogMapper.class
 com\example\voucher\controller\GiftController.class
 com\example\voucher\mapper\VoucherMapper.class
+com\example\voucher\dto\ChangePasswordRequest.class
 com\example\voucher\service\EmployeeService.class
 com\example\voucher\service\VoucherBatchService.class
 com\example\voucher\common\VoucherType.class

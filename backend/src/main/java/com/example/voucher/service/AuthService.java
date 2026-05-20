@@ -64,4 +64,12 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(newPwd));
         userMapper.updateById(user);
     }
+
+    public SysUser updateCurrentUser(Long userId, String mobile, String department) {
+        SysUser user = userMapper.selectById(userId);
+        user.setMobile(mobile);
+        user.setDepartment(department);
+        userMapper.updateById(user);
+        return user;
+    }
 }

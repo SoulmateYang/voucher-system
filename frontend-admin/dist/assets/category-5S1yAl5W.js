@@ -1,0 +1,1 @@
+import{r as t}from"./request-BSj5fX29.js";function n(){return t.get("/categories")}function s(e,r){return t.post("/categories",{name:e,voucherType:r})}function u(e,r,o){return t.put(`/categories/${e}`,{name:r,voucherType:o})}function g(e){return t.delete(`/categories/${e}`)}export{s as c,g as d,n as g,u};
